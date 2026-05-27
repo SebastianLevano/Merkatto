@@ -1,0 +1,15 @@
+# Reverse proxy with automatic HTTPS. {$DOMAIN} comes from the per-client .env.
+# Caddy obtains/renews TLS certificates automatically for a public domain.
+{$DOMAIN} {
+    encode gzip
+
+    # API under /api -> backend
+    handle /api/* {
+        reverse_proxy api:8080
+    }
+
+    # Everything else -> Angular SPA (Nginx)
+    handle {
+        reverse_proxy web:8080
+    }
+}

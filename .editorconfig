@@ -1,0 +1,22 @@
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+
+[*.{cs,csproj,sln,props,targets}]
+indent_size = 4
+
+[*.{ts,js,json,html,css,scss,yml,yaml,md}]
+indent_size = 2
+
+[*.cs]
+# Naming & style essentials
+dotnet_sort_system_directives_first = true
+csharp_new_line_before_open_brace = all
+dotnet_style_require_accessibility_modifiers = always:warning
+csharp_style_var_for_built_in_types = false:suggestion
+dotnet_naming_rule.private_fields_underscore.severity = suggestion

@@ -1,0 +1,59 @@
+<div class="flex items-center justify-between">
+  <div>
+    <h1 class="text-xl font-semibold text-slate-900">Fiados</h1>
+    <p class="mt-1 text-sm text-slate-500">Por cobrar: <span class="font-semibold text-slate-900">S/ {{ totalOwed() | number: '1.2-2' }}</span></p>
+  </div>
+  <button (click)="openDialog()" class="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800">
+    Nuevo cliente
+  </button>
+</div>
+
+<div class="mt-4">
+  <input [formControl]="search" type="search" placeholder="Buscar cliente…" class="w-full max-w-sm rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900 focus:ring-1 focus:ring-slate-900" />
+</div>
+
+<div class="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+  @for (c of customers(); track c.id) {
+    <a [routerLink]="['/fiados', c.id]" class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm hover:border-slate-300">
+      <div class="flex items-start justify-between">
+        <div>
+          <div class="font-medium text-slate-900">{{ c.name }}</div>
+          @if (c.phone) { <div class="text-xs text-slate-400">{{ c.phone }}</div> }
+        </div>
+        <div class="text-right">
+          <div class="text-xs text-slate-400">saldo</div>
+          <div class="font-semibold" [class.text-red-600]="c.balance > 0" [class.text-emerald-600]="c.balance <= 0">
+            S/ {{ c.balance | number: '1.2-2' }}
+          </div>
+        </div>
+      </div>
+    </a>
+  } @empty {
+    <p class="col-span-full py-10 text-center text-slate-400">{{ loading() ? 'Cargando…' : 'Sin clientes.' }}</p>
+  }
+</div>
+
+@if (showDialog()) {
+  <div class="fixed inset-0 z-20 grid place-items-center bg-slate-900/30 p-4" (click)="showDialog.set(false)">
+    <div class="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl" (click)="$event.stopPropagation()">
+      <h2 class="text-lg font-semibold text-slate-900">Nuevo cliente</h2>
+      <div class="mt-4 space-y-4">
+        <label class="block">
+          <span class="text-sm text-slate-600">Nombre</span>
+          <input [(ngModel)]="newName" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+        </label>
+        <label class="block">
+          <span class="text-sm text-slate-600">Teléfono (opcional)</span>
+          <input [(ngModel)]="newPhone" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+        </label>
+        @if (error()) { <p class="text-sm text-red-600">{{ error() }}</p> }
+      </div>
+      <div class="mt-6 flex justify-end gap-3">
+        <button (click)="showDialog.set(false)" class="rounded-lg px-4 py-2 text-sm text-slate-600 hover:bg-slate-100">Cancelar</button>
+        <button (click)="save()" [disabled]="saving()" class="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50">
+          {{ saving() ? 'Guardando…' : 'Crear' }}
+        </button>
+      </div>
+    </div>
+  </div>
+}

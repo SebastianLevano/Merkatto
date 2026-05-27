@@ -1,0 +1,81 @@
+<div class="mx-auto max-w-2xl">
+  <a routerLink="/cierre" class="text-sm text-slate-500 hover:text-slate-900">← Cierres</a>
+  <h1 class="mt-2 text-xl font-semibold text-slate-900">Nuevo cierre diario</h1>
+
+  <div class="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-3">
+    <!-- Inputs -->
+    <div class="space-y-6 lg:col-span-2">
+      <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <label class="block">
+          <span class="text-sm text-slate-600">Fecha del cierre</span>
+          <input type="date" [(ngModel)]="businessDate" (change)="loadPreview()" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900" />
+        </label>
+        @if (alreadyClosed()) {
+          <p class="mt-2 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-700">Ya existe un cierre para esta fecha.</p>
+        }
+      </section>
+
+      <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <h2 class="text-sm font-semibold text-slate-700">Ingresos por método de pago</h2>
+        <div class="mt-4 grid grid-cols-2 gap-4">
+          <label class="block">
+            <span class="text-sm text-slate-600">Efectivo (S/)</span>
+            <input type="number" step="0.01" min="0" [(ngModel)]="cash" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+          </label>
+          <label class="block">
+            <span class="text-sm text-slate-600">Yape (S/)</span>
+            <input type="number" step="0.01" min="0" [(ngModel)]="yape" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+          </label>
+          <label class="block">
+            <span class="text-sm text-slate-600">Plin (S/)</span>
+            <input type="number" step="0.01" min="0" [(ngModel)]="plin" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+          </label>
+          <label class="block">
+            <span class="text-sm text-slate-600">POS / tarjeta (S/)</span>
+            <input type="number" step="0.01" min="0" [(ngModel)]="pos" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+          </label>
+          <label class="block">
+            <span class="text-sm text-slate-600">Comisión POS (%)</span>
+            <input type="number" step="0.1" min="0" [(ngModel)]="posCommissionPercent" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+          </label>
+          <label class="block">
+            <span class="text-sm text-slate-600">Compras rápidas (S/)</span>
+            <input type="number" step="0.01" min="0" [(ngModel)]="quickPurchases" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+          </label>
+        </div>
+        <label class="mt-4 block">
+          <span class="text-sm text-slate-600">Notas (opcional)</span>
+          <input [(ngModel)]="notes" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+        </label>
+      </section>
+    </div>
+
+    <!-- Live summary -->
+    <aside class="lg:col-span-1">
+      <div class="sticky top-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <h2 class="text-sm font-semibold text-slate-700">Resumen</h2>
+        <dl class="mt-4 space-y-3 text-sm">
+          <div class="flex justify-between"><dt class="text-slate-500">Ingresos brutos</dt><dd class="font-medium text-slate-900">S/ {{ grossIncome.toFixed(2) }}</dd></div>
+          <div class="flex justify-between"><dt class="text-slate-500">− Gastos del día</dt><dd class="text-slate-700">S/ {{ totalExpenses().toFixed(2) }}</dd></div>
+          <div class="flex justify-between"><dt class="text-slate-500">− Compras rápidas</dt><dd class="text-slate-700">S/ {{ (+quickPurchases || 0).toFixed(2) }}</dd></div>
+          <div class="flex justify-between"><dt class="text-slate-500">− Comisión POS</dt><dd class="text-slate-700">S/ {{ commission.toFixed(2) }}</dd></div>
+          <div class="flex justify-between border-t border-slate-200 pt-3">
+            <dt class="font-semibold text-slate-700">Flujo neto</dt>
+            <dd class="text-lg font-semibold" [class.text-emerald-600]="netFlow >= 0" [class.text-red-600]="netFlow < 0">S/ {{ netFlow.toFixed(2) }}</dd>
+          </div>
+        </dl>
+        <p class="mt-3 text-xs text-slate-400">Los gastos del día se toman automáticamente de lo registrado en Gastos.</p>
+
+        @if (error()) { <p class="mt-3 text-sm text-red-600">{{ error() }}</p> }
+
+        <button
+          (click)="save()"
+          [disabled]="saving() || alreadyClosed()"
+          class="mt-5 w-full rounded-lg bg-slate-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50"
+        >
+          {{ saving() ? 'Guardando…' : 'Registrar cierre' }}
+        </button>
+      </div>
+    </aside>
+  </div>
+</div>

@@ -1,0 +1,26 @@
+# --- Build stage ---
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+WORKDIR /src
+
+# Restore (cached on lockfile/csproj changes)
+COPY backend/Merkatto.sln ./
+COPY backend/src/Merkatto.Domain/Merkatto.Domain.csproj src/Merkatto.Domain/
+COPY backend/src/Merkatto.Application/Merkatto.Application.csproj src/Merkatto.Application/
+COPY backend/src/Merkatto.Infrastructure/Merkatto.Infrastructure.csproj src/Merkatto.Infrastructure/
+COPY backend/src/Merkatto.Api/Merkatto.Api.csproj src/Merkatto.Api/
+RUN dotnet restore src/Merkatto.Api/Merkatto.Api.csproj
+
+# Build & publish
+COPY backend/src/ src/
+RUN dotnet publish src/Merkatto.Api/Merkatto.Api.csproj -c Release -o /app --no-restore
+
+# --- Runtime stage ---
+FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
+WORKDIR /app
+# Run as non-root
+RUN adduser --disabled-password --gecos "" appuser
+COPY --from=build /app ./
+USER appuser
+EXPOSE 8080
+ENV ASPNETCORE_URLS=http://+:8080
+ENTRYPOINT ["dotnet", "Merkatto.Api.dll"]

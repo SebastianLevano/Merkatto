@@ -1,0 +1,89 @@
+# Merkatto — single-tenant stack for one business.
+# Same images for every client; differentiate per install via the .env file in this folder.
+name: merkatto
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.api
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ConnectionStrings__Default: "Host=db;Port=5432;Database=${POSTGRES_DB};Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}"
+      Auth__SigningKey: ${JWT_SIGNING_KEY}
+      Auth__Issuer: ${JWT_ISSUER:-Merkatto}
+      Auth__Audience: ${JWT_AUDIENCE:-Merkatto}
+      Cors__Origins__0: ${PUBLIC_URL}
+      Seed__AdminEmail: ${ADMIN_EMAIL}
+      Seed__AdminName: ${ADMIN_NAME:-Administrador}
+      Seed__AdminPassword: ${ADMIN_PASSWORD}
+    expose:
+      - "8080"
+
+  web:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.web
+    restart: unless-stopped
+    depends_on:
+      - api
+    expose:
+      - "8080"
+
+  proxy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on:
+      - api
+      - web
+    environment:
+      DOMAIN: ${DOMAIN}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+
+  backup:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PGHOST: db
+      PGUSER: ${POSTGRES_USER}
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+      PGDATABASE: ${POSTGRES_DB}
+      BACKUP_RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-14}
+    volumes:
+      - ./backup/backup.sh:/usr/local/bin/backup.sh:ro
+      - backups:/backups
+    entrypoint: ["/bin/sh", "/usr/local/bin/backup.sh"]
+
+volumes:
+  db-data:
+  backups:
+  caddy-data:
+  caddy-config:

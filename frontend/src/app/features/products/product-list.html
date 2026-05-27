@@ -1,0 +1,74 @@
+<div class="flex items-center justify-between">
+  <div>
+    <h1 class="text-xl font-semibold text-slate-900">Productos</h1>
+    <p class="mt-1 text-sm text-slate-500">{{ total() }} producto(s)</p>
+  </div>
+  @if (isAdmin()) {
+    <a
+      routerLink="/productos/nuevo"
+      class="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800"
+    >
+      Nuevo producto
+    </a>
+  }
+</div>
+
+<div class="mt-4">
+  <input
+    [formControl]="search"
+    type="search"
+    placeholder="Buscar por nombre o código…"
+    class="w-full max-w-sm rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900 focus:ring-1 focus:ring-slate-900"
+  />
+</div>
+
+<div class="mt-4 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+  <table class="w-full text-sm">
+    <thead class="border-b border-slate-200 bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
+      <tr>
+        <th class="px-4 py-3 font-medium">Producto</th>
+        <th class="px-4 py-3 font-medium">Categoría</th>
+        <th class="px-4 py-3 text-right font-medium">Costo u.</th>
+        <th class="px-4 py-3 text-right font-medium">Precio</th>
+        <th class="px-4 py-3 text-right font-medium">Margen</th>
+        <th class="px-4 py-3 text-right font-medium">Stock</th>
+        <th class="px-4 py-3 font-medium"></th>
+      </tr>
+    </thead>
+    <tbody class="divide-y divide-slate-100">
+      @for (p of products(); track p.id) {
+        <tr class="hover:bg-slate-50" [class.opacity-50]="!p.isActive">
+          <td class="px-4 py-3">
+            <div class="font-medium text-slate-900">{{ p.name }}</div>
+            @if (p.internalCode) { <div class="text-xs text-slate-400">{{ p.internalCode }}</div> }
+          </td>
+          <td class="px-4 py-3 text-slate-600">{{ p.categoryName }}</td>
+          <td class="px-4 py-3 text-right text-slate-600">S/ {{ p.unitCost | number: '1.2-2' }}</td>
+          <td class="px-4 py-3 text-right text-slate-900">S/ {{ p.salePrice | number: '1.2-2' }}</td>
+          <td class="px-4 py-3 text-right">
+            <span class="text-emerald-600">S/ {{ p.margin | number: '1.2-2' }}</span>
+            <span class="ml-1 text-xs text-slate-400">{{ p.marginRate * 100 | number: '1.0-0' }}%</span>
+          </td>
+          <td class="px-4 py-3 text-right">
+            <span [class.text-red-600]="p.isLowStock">{{ p.totalStock | number: '1.0-2' }}</span>
+            <span class="text-slate-400">/ {{ p.minStock | number: '1.0-0' }}</span>
+          </td>
+          <td class="px-4 py-3 text-right whitespace-nowrap">
+            @if (isAdmin()) {
+              <a [routerLink]="['/productos', p.id]" class="text-slate-600 hover:text-slate-900">Editar</a>
+              <button (click)="toggleActive(p)" class="ml-3 text-slate-500 hover:text-slate-900">
+                {{ p.isActive ? 'Desactivar' : 'Activar' }}
+              </button>
+            }
+          </td>
+        </tr>
+      } @empty {
+        <tr>
+          <td colspan="7" class="px-4 py-10 text-center text-slate-400">
+            {{ loading() ? 'Cargando…' : 'Sin productos.' }}
+          </td>
+        </tr>
+      }
+    </tbody>
+  </table>
+</div>

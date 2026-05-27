@@ -1,0 +1,88 @@
+<div class="flex items-center justify-between">
+  <div>
+    <h1 class="text-xl font-semibold text-slate-900">Gastos</h1>
+    <p class="mt-1 text-sm text-slate-500">Total del periodo: <span class="font-semibold text-slate-900">S/ {{ total() | number: '1.2-2' }}</span></p>
+  </div>
+  <button (click)="openDialog()" class="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800">
+    Registrar gasto
+  </button>
+</div>
+
+<div class="mt-4 flex flex-wrap items-end gap-3">
+  <label class="block">
+    <span class="text-xs text-slate-500">Desde</span>
+    <input type="date" [(ngModel)]="from" (change)="load()" class="mt-1 rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900" />
+  </label>
+  <label class="block">
+    <span class="text-xs text-slate-500">Hasta</span>
+    <input type="date" [(ngModel)]="to" (change)="load()" class="mt-1 rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900" />
+  </label>
+</div>
+
+<div class="mt-4 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+  <table class="w-full text-sm">
+    <thead class="border-b border-slate-200 bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
+      <tr>
+        <th class="px-4 py-3 font-medium">Fecha</th>
+        <th class="px-4 py-3 font-medium">Tipo</th>
+        <th class="px-4 py-3 font-medium">Descripción</th>
+        <th class="px-4 py-3 text-right font-medium">Monto</th>
+        <th class="px-4 py-3 font-medium"></th>
+      </tr>
+    </thead>
+    <tbody class="divide-y divide-slate-100">
+      @for (e of expenses(); track e.id) {
+        <tr class="hover:bg-slate-50">
+          <td class="px-4 py-3 text-slate-500">{{ e.date | date: 'dd/MM/yyyy' }}</td>
+          <td class="px-4 py-3"><span class="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600">{{ label(e.type) }}</span></td>
+          <td class="px-4 py-3 text-slate-600">{{ e.description ?? '—' }}</td>
+          <td class="px-4 py-3 text-right font-medium text-slate-900">S/ {{ e.amount | number: '1.2-2' }}</td>
+          <td class="px-4 py-3 text-right">
+            @if (isAdmin()) {
+              <button (click)="remove(e)" class="text-slate-400 hover:text-red-600">Eliminar</button>
+            }
+          </td>
+        </tr>
+      } @empty {
+        <tr><td colspan="5" class="px-4 py-10 text-center text-slate-400">{{ loading() ? 'Cargando…' : 'Sin gastos en el periodo.' }}</td></tr>
+      }
+    </tbody>
+  </table>
+</div>
+
+@if (showDialog()) {
+  <div class="fixed inset-0 z-20 grid place-items-center bg-slate-900/30 p-4" (click)="showDialog.set(false)">
+    <div class="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl" (click)="$event.stopPropagation()">
+      <h2 class="text-lg font-semibold text-slate-900">Registrar gasto</h2>
+      <div class="mt-4 space-y-4">
+        <div class="grid grid-cols-2 gap-3">
+          <label class="block">
+            <span class="text-sm text-slate-600">Fecha</span>
+            <input type="date" [(ngModel)]="newDate" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+          </label>
+          <label class="block">
+            <span class="text-sm text-slate-600">Tipo</span>
+            <select [(ngModel)]="newType" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm">
+              @for (t of expenseTypes; track t.value) { <option [ngValue]="t.value">{{ t.label }}</option> }
+            </select>
+          </label>
+        </div>
+        <label class="block">
+          <span class="text-sm text-slate-600">Monto (S/)</span>
+          <input type="number" min="0" step="0.01" [(ngModel)]="newAmount" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+        </label>
+        <label class="block">
+          <span class="text-sm text-slate-600">Descripción (opcional)</span>
+          <input [(ngModel)]="newDescription" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+        </label>
+        @if (error()) { <p class="text-sm text-red-600">{{ error() }}</p> }
+      </div>
+      <div class="mt-6 flex justify-end gap-3">
+        <button (click)="showDialog.set(false)" class="rounded-lg px-4 py-2 text-sm text-slate-600 hover:bg-slate-100">Cancelar</button>
+        <button (click)="save()" [disabled]="saving()" class="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50">
+          {{ saving() ? 'Guardando…' : 'Guardar' }}
+        </button>
+      </div>
+    </div>
+  </div>
+}

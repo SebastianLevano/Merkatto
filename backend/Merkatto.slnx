@@ -1,0 +1,12 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Merkatto.Api/Merkatto.Api.csproj" />
+    <Project Path="src/Merkatto.Application/Merkatto.Application.csproj" />
+    <Project Path="src/Merkatto.Domain/Merkatto.Domain.csproj" />
+    <Project Path="src/Merkatto.Infrastructure/Merkatto.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Merkatto.IntegrationTests/Merkatto.IntegrationTests.csproj" />
+    <Project Path="tests/Merkatto.UnitTests/Merkatto.UnitTests.csproj" />
+  </Folder>
+</Solution>
