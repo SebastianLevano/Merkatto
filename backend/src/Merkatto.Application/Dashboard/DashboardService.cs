@@ -9,20 +9,20 @@ public sealed class DashboardService(IAppDbContext db, IDateTimeProvider clock)
     {
         var today = DateOnly.FromDateTime(clock.UtcNow.Date);
 
-        var lastClosingTask = db.DailyClosings
+        var lastClosing = await db.DailyClosings
             .OrderByDescending(c => c.BusinessDate)
             .Select(c => new DashboardLastClosing(c.BusinessDate, c.GrossIncome, c.NetFlow, c.EstimatedProfit))
             .FirstOrDefaultAsync(ct);
 
-        var todayExpensesTask = db.Expenses
+        var todayExpenses = await db.Expenses
             .Where(e => e.Date == today)
-            .SumAsync(e => (decimal?)e.Amount, ct);
+            .SumAsync(e => (decimal?)e.Amount, ct) ?? 0m;
 
-        var lowStockTask = db.Products
+        var lowStockCount = await db.Products
             .Where(p => p.IsActive && (p.WarehouseStock + p.CounterStock) <= p.MinStock)
             .CountAsync(ct);
 
-        var creditBalanceTask = db.CreditCustomers
+        var creditRows = await db.CreditCustomers
             .Select(c => new
             {
                 Sales = c.Sales.Sum(s => (decimal?)s.TotalAmount) ?? 0m,
@@ -30,25 +30,22 @@ public sealed class DashboardService(IAppDbContext db, IDateTimeProvider clock)
             })
             .ToListAsync(ct);
 
-        var recentClosingsTask = db.DailyClosings
+        var totalCredit = creditRows.Sum(r => r.Sales - r.Payments);
+        var activeCustomers = creditRows.Count(r => r.Sales - r.Payments > 0);
+
+        var recentClosings = await db.DailyClosings
             .OrderByDescending(c => c.BusinessDate)
             .Take(7)
             .Select(c => new DashboardClosingRow(c.BusinessDate, c.GrossIncome, c.NetFlow))
             .ToListAsync(ct);
 
-        await Task.WhenAll(lastClosingTask, todayExpensesTask, lowStockTask, creditBalanceTask, recentClosingsTask);
-
-        var creditRows = await creditBalanceTask;
-        var totalCredit = creditRows.Sum(r => r.Sales - r.Payments);
-        var activeCustomers = creditRows.Count(r => r.Sales - r.Payments > 0);
-
         return new DashboardSummary(
-            await lastClosingTask,
-            await todayExpensesTask ?? 0m,
-            await lowStockTask,
+            lastClosing,
+            todayExpenses,
+            lowStockCount,
             totalCredit,
             activeCustomers,
-            (await recentClosingsTask).OrderBy(r => r.Date).ToList()
+            recentClosings.OrderBy(r => r.Date).ToList()
         );
     }
 }
