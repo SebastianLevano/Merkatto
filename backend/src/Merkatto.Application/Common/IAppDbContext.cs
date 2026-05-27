@@ -1,6 +1,7 @@
 using Merkatto.Domain.Audit;
 using Merkatto.Domain.Auth;
 using Merkatto.Domain.Catalog;
+using Merkatto.Domain.Common;
 using Merkatto.Domain.Credit;
 using Merkatto.Domain.Inventory;
 using Merkatto.Domain.Operations;
@@ -38,6 +39,8 @@ public interface IAppDbContext
     DbSet<CreditPayment> CreditPayments { get; }
 
     DbSet<AuditLog> AuditLogs { get; }
+
+    DbSet<AppSetting> AppSettings { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

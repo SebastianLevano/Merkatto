@@ -27,7 +27,22 @@ public sealed class ProductService(IAppDbContext db, IDateTimeProvider clock)
             .Take(query.PageSize)
             .ToListAsync(ct);
 
-        var items = products.Select(ToListItem).ToList();
+        var productIds = products.Select(p => p.Id).ToList();
+        var window = clock.UtcNow.AddDays(-30);
+        var consumption = await db.StockMovements
+            .Where(m => productIds.Contains(m.ProductId) && m.Quantity < 0 && m.OccurredAt >= window)
+            .GroupBy(m => m.ProductId)
+            .Select(g => new { ProductId = g.Key, Total = -g.Sum(m => m.Quantity) })
+            .ToDictionaryAsync(x => x.ProductId, x => x.Total, ct);
+
+        var items = products.Select(p =>
+        {
+            decimal? daysOfStock = null;
+            if (consumption.TryGetValue(p.Id, out var consumed) && consumed > 0)
+                daysOfStock = Math.Round(p.TotalStock / (consumed / 30m), 1);
+            return ToListItem(p, daysOfStock);
+        }).ToList();
+
         return new PagedResult<ProductListItem>(items, total, query.Page, query.PageSize);
     }
 
@@ -126,10 +141,10 @@ public sealed class ProductService(IAppDbContext db, IDateTimeProvider clock)
     private static string? Normalize(string? value) =>
         string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 
-    private static ProductListItem ToListItem(Product p) => new(
+    private static ProductListItem ToListItem(Product p, decimal? daysOfStock = null) => new(
         p.Id, p.Name, p.InternalCode, p.Category.Name, p.Brand?.Name, p.SaleUnit,
-        p.SalePrice, p.UnitCost, p.Margin, p.MarginRate, p.TotalStock, p.MinStock,
-        p.IsLowStock, p.IsActive);
+        p.SalePrice, p.UnitCost, p.Margin, p.MarginRate, p.WarehouseStock, p.CounterStock,
+        p.TotalStock, p.MinStock, p.IsLowStock, p.IsActive, daysOfStock);
 
     private static ProductDetail ToDetail(Product p) => new(
         p.Id, p.Name, p.InternalCode, p.CategoryId, p.Category.Name, p.BrandId, p.Brand?.Name,

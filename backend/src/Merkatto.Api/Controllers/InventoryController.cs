@@ -35,4 +35,12 @@ public sealed class InventoryController(InventoryService inventory) : Controller
         await inventory.AdjustAsync(request, ct);
         return NoContent();
     }
+
+    [HttpPost("batch-count")]
+    [Authorize(Policy = "Collaborator")]
+    public async Task<IActionResult> BatchCount(BatchCountRequest request, CancellationToken ct)
+    {
+        await inventory.BatchCountAsync(request, ct);
+        return NoContent();
+    }
 }

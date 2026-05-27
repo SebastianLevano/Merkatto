@@ -19,6 +19,15 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.Configure<AuthSettings>(builder.Configuration.GetSection(AuthSettings.SectionName));
 var authSettings = builder.Configuration.GetSection(AuthSettings.SectionName).Get<AuthSettings>() ?? new AuthSettings();
 
+// Fail fast if the JWT signing key looks like the placeholder (critical in production)
+if (!builder.Environment.IsDevelopment() &&
+    (string.IsNullOrWhiteSpace(authSettings.SigningKey) || authSettings.SigningKey.Contains("change-me")))
+{
+    throw new InvalidOperationException(
+        "Auth:SigningKey must be set to a strong random value in production. " +
+        "Generate one with: openssl rand -base64 48");
+}
+
 // --- Layers ---
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);

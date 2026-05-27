@@ -36,6 +36,7 @@ services:
       Seed__AdminEmail: ${ADMIN_EMAIL}
       Seed__AdminName: ${ADMIN_NAME:-Administrador}
       Seed__AdminPassword: ${ADMIN_PASSWORD}
+      Seed__BusinessName: ${BUSINESS_NAME:-Mi Bodega}
     expose:
       - "8080"
 

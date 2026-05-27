@@ -6,7 +6,9 @@ public record DashboardSummary(
     int LowStockCount,
     decimal TotalCreditBalance,
     int ActiveCreditCustomers,
-    IReadOnlyList<DashboardClosingRow> RecentClosings
+    IReadOnlyList<DashboardClosingRow> RecentClosings,
+    int AlertCount,
+    IReadOnlyList<DashboardTopProduct> TopProducts
 );
 
 public record DashboardLastClosing(
@@ -17,3 +19,12 @@ public record DashboardLastClosing(
 );
 
 public record DashboardClosingRow(DateOnly Date, decimal GrossIncome, decimal NetFlow);
+
+public record DashboardTopProduct(
+    long ProductId,
+    string Name,
+    string? Category,
+    decimal SalePrice,
+    decimal Margin,
+    decimal MarginRate
+);

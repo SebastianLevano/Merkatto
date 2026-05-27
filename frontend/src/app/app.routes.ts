@@ -37,7 +37,8 @@ export const routes: Routes = [
       },
       {
         path: 'inventario',
-        loadComponent: () => import('./features/inventory/inventory-list').then((m) => m.InventoryList)
+        redirectTo: '/productos',
+        pathMatch: 'full'
       },
       {
         path: 'inventario/movimientos',
@@ -62,6 +63,26 @@ export const routes: Routes = [
       {
         path: 'fiados/:id',
         loadComponent: () => import('./features/credit/credit-detail').then((m) => m.CreditDetail)
+      },
+      {
+        path: 'alertas',
+        loadComponent: () => import('./features/alerts/alert-list').then((m) => m.AlertList)
+      },
+      {
+        path: 'nrus',
+        loadComponent: () => import('./features/nrus/nrus').then((m) => m.Nrus)
+      },
+      {
+        path: 'proveedores',
+        loadComponent: () => import('./features/suppliers/supplier-list').then((m) => m.SupplierList)
+      },
+      {
+        path: 'timeline',
+        loadComponent: () => import('./features/timeline/timeline').then((m) => m.Timeline)
+      },
+      {
+        path: 'configuracion',
+        loadComponent: () => import('./features/settings/settings').then((m) => m.Settings)
       }
     ]
   },

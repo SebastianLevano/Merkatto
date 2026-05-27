@@ -41,4 +41,12 @@ public sealed class SuppliersController(SupplierService suppliers) : ControllerB
         var id = await suppliers.CreateAsync(request, ct);
         return Created($"/api/v1/suppliers/{id}", new { id });
     }
+
+    [HttpPut("{id:long}")]
+    [Authorize(Policy = "Administrator")]
+    public async Task<IActionResult> Update(long id, SaveSupplierRequest request, CancellationToken ct)
+    {
+        await suppliers.UpdateAsync(id, request, ct);
+        return NoContent();
+    }
 }

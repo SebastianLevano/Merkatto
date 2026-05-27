@@ -38,9 +38,18 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
 
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
 
+    public DbSet<AppSetting> AppSettings => Set<AppSetting>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);
+
+        modelBuilder.Entity<AppSetting>(b =>
+        {
+            b.HasKey(s => s.Key);
+            b.Property(s => s.Key).HasMaxLength(100);
+            b.Property(s => s.Value).HasMaxLength(500);
+        });
 
         // Soft-delete: hide deleted rows automatically for every ISoftDelete entity.
         foreach (var entityType in modelBuilder.Model.GetEntityTypes())

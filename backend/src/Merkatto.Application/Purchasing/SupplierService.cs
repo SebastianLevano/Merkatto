@@ -25,6 +25,16 @@ public sealed class SupplierService(IAppDbContext db)
         return supplier.Id;
     }
 
+    public async Task UpdateAsync(long id, SaveSupplierRequest req, CancellationToken ct)
+    {
+        var supplier = await db.Suppliers.FirstOrDefaultAsync(s => s.Id == id, ct)
+            ?? throw new NotFoundException("Proveedor no encontrado.");
+        supplier.Name = req.Name.Trim();
+        supplier.Phone = Normalize(req.Phone);
+        supplier.Notes = Normalize(req.Notes);
+        await db.SaveChangesAsync(ct);
+    }
+
     private static string? Normalize(string? value) =>
         string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 }

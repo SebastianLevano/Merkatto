@@ -1,10 +1,13 @@
 using Merkatto.Application.Auth;
 using Merkatto.Application.Common;
+using Merkatto.Application.Reports;
 using Merkatto.Infrastructure.Persistence;
+using Merkatto.Infrastructure.Reports;
 using Merkatto.Infrastructure.Security;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using QuestPDF.Infrastructure;
 
 namespace Merkatto.Infrastructure;
 
@@ -12,7 +15,10 @@ public static class DependencyInjection
 {
     public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration config)
     {
+        QuestPDF.Settings.License = LicenseType.Community;
+
         services.AddScoped<AuditingInterceptor>();
+        services.AddScoped<IReportService, ReportService>();
 
         services.AddDbContext<AppDbContext>((sp, options) =>
         {

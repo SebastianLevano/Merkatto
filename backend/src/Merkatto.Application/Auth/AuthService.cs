@@ -75,6 +75,24 @@ public sealed class AuthService(
         return user is null ? null : new UserDto(user.Id, user.Email, user.FullName, user.Role);
     }
 
+    public async Task ChangePasswordAsync(ChangePasswordRequest request, CancellationToken ct)
+    {
+        if (currentUser.UserId is not { } id)
+            throw new AuthException("No autenticado.");
+
+        if (string.IsNullOrWhiteSpace(request.NewPassword) || request.NewPassword.Length < 8)
+            throw new BusinessRuleException("La nueva contraseña debe tener al menos 8 caracteres.");
+
+        var user = await db.Users.FirstOrDefaultAsync(u => u.Id == id, ct)
+            ?? throw new AuthException("Usuario no encontrado.");
+
+        if (!passwordHasher.Verify(request.CurrentPassword, user.PasswordHash))
+            throw new AuthException("La contraseña actual es incorrecta.");
+
+        user.PasswordHash = passwordHasher.Hash(request.NewPassword);
+        await db.SaveChangesAsync(ct);
+    }
+
     private async Task<TokenPair> IssueTokensAsync(User user, CancellationToken ct)
     {
         var (access, accessExp) = tokens.CreateAccessToken(user);

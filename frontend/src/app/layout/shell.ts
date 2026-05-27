@@ -1,11 +1,14 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, signal, OnInit } from '@angular/core';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { AuthService } from '../core/auth/auth.service';
+import { AlertsService } from '../features/alerts/alerts.service';
+import { SettingsService } from '../features/settings/settings.service';
 
 interface NavItem {
   label: string;
   path: string;
   icon: string;
+  badge?: () => number;
 }
 
 @Component({
@@ -13,22 +16,45 @@ interface NavItem {
   imports: [RouterOutlet, RouterLink, RouterLinkActive],
   templateUrl: './shell.html'
 })
-export class Shell {
+export class Shell implements OnInit {
   private readonly auth = inject(AuthService);
+  private readonly alertsService = inject(AlertsService);
+  private readonly settingsService = inject(SettingsService);
   private readonly router = inject(Router);
 
   protected readonly user = this.auth.user;
+  protected readonly alertCount = signal(0);
+  protected readonly mobileOpen = signal(false);
+  protected readonly businessName = this.settingsService.businessName;
 
-  // Desktop-first sidebar. Modules light up as Phase 1 lands.
   protected readonly nav: NavItem[] = [
-    { label: 'Dashboard', path: '/', icon: '◈' },
-    { label: 'Productos', path: '/productos', icon: '▤' },
-    { label: 'Compras', path: '/compras', icon: '▦' },
-    { label: 'Inventario', path: '/inventario', icon: '▣' },
-    { label: 'Cierre diario', path: '/cierre', icon: '◷' },
-    { label: 'Gastos', path: '/gastos', icon: '▾' },
-    { label: 'Fiados', path: '/fiados', icon: '☷' }
+    { label: 'Dashboard',     path: '/',          icon: '◈' },
+    { label: 'Productos',     path: '/productos',  icon: '▤' },
+    { label: 'Compras',       path: '/compras',    icon: '▦' },
+    { label: 'Cierre diario', path: '/cierre',     icon: '◷' },
+    { label: 'Gastos',        path: '/gastos',     icon: '▾' },
+    { label: 'Fiados',        path: '/fiados',     icon: '☷' },
+    { label: 'Alertas',       path: '/alertas',    icon: '⚑', badge: () => this.alertCount() },
+    { label: 'NRUS',          path: '/nrus',       icon: '₲' },
+    { label: 'Actividad',     path: '/timeline',   icon: '◎' },
+    { label: 'Configuración', path: '/configuracion', icon: '⚙' }
   ];
+
+  ngOnInit(): void {
+    this.settingsService.load().subscribe({ error: () => {} });
+    this.alertsService.list().subscribe({
+      next: (a) => this.alertCount.set(a.length),
+      error: () => {}
+    });
+  }
+
+  protected toggleMobile(): void {
+    this.mobileOpen.update((v) => !v);
+  }
+
+  protected closeMobile(): void {
+    this.mobileOpen.set(false);
+  }
 
   protected logout(): void {
     this.auth.logout().subscribe({

@@ -9,6 +9,7 @@ import {
   PagedResult,
   TransferRequest
 } from './inventory.models';
+import { BatchCountItem } from '../products/product.models';
 
 @Injectable({ providedIn: 'root' })
 export class InventoryService {
@@ -36,5 +37,9 @@ export class InventoryService {
 
   adjust(req: AdjustmentRequest): Observable<void> {
     return this.http.post<void>(`${this.api}/inventory/adjustments`, req);
+  }
+
+  batchCount(items: BatchCountItem[], notes?: string): Observable<void> {
+    return this.http.post<void>(`${this.api}/inventory/batch-count`, { items, notes: notes ?? null });
   }
 }

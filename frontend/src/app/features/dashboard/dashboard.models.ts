@@ -11,6 +11,15 @@ export interface DashboardClosingRow {
   netFlow: number;
 }
 
+export interface DashboardTopProduct {
+  productId: number;
+  name: string;
+  category: string | null;
+  salePrice: number;
+  margin: number;
+  marginRate: number;
+}
+
 export interface DashboardSummary {
   lastClosing: DashboardLastClosing | null;
   todayExpenses: number;
@@ -18,4 +27,6 @@ export interface DashboardSummary {
   totalCreditBalance: number;
   activeCreditCustomers: number;
   recentClosings: DashboardClosingRow[];
+  alertCount: number;
+  topProducts: DashboardTopProduct[];
 }

@@ -1,74 +1,235 @@
-<div class="flex items-center justify-between">
+<!-- Header -->
+<div class="flex flex-wrap items-center justify-between gap-3">
   <div>
-    <h1 class="text-xl font-semibold text-slate-900">Productos</h1>
-    <p class="mt-1 text-sm text-slate-500">{{ total() }} producto(s)</p>
+    <h1 class="text-xl font-semibold text-slate-900">Productos e Inventario</h1>
+    <p class="mt-1 text-sm text-slate-500">
+      {{ total() }} producto(s) ·
+      <a routerLink="/inventario/movimientos" class="hover:text-slate-700">Ver historial de movimientos →</a>
+    </p>
   </div>
-  @if (isAdmin()) {
-    <a
-      routerLink="/productos/nuevo"
-      class="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800"
-    >
-      Nuevo producto
-    </a>
+
+  @if (!conteoMode()) {
+    <div class="flex items-center gap-2">
+      <button (click)="enterConteo()"
+              class="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">
+        Conteo del día
+      </button>
+      @if (isAdmin()) {
+        <a routerLink="/productos/nuevo"
+           class="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800">
+          Nuevo producto
+        </a>
+      }
+    </div>
+  } @else {
+    <div class="flex items-center gap-2">
+      @if (conteoError()) {
+        <p class="text-sm text-red-600">{{ conteoError() }}</p>
+      }
+      <button (click)="cancelConteo()"
+              class="rounded-lg px-4 py-2 text-sm text-slate-600 hover:bg-slate-100">
+        Cancelar
+      </button>
+      <button (click)="submitConteo()" [disabled]="conteoSaving()"
+              class="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50">
+        {{ conteoSaving() ? 'Guardando…' : 'Guardar conteo' }}
+      </button>
+    </div>
   }
 </div>
 
-<div class="mt-4">
-  <input
-    [formControl]="search"
-    type="search"
-    placeholder="Buscar por nombre o código…"
-    class="w-full max-w-sm rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900 focus:ring-1 focus:ring-slate-900"
-  />
-</div>
+<!-- Search (hidden during conteo) -->
+@if (!conteoMode()) {
+  <div class="mt-4">
+    <input
+      [formControl]="search"
+      type="search"
+      placeholder="Buscar por nombre o código…"
+      class="w-full max-w-sm rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900 focus:ring-1 focus:ring-slate-900"
+    />
+  </div>
+}
 
-<div class="mt-4 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-  <table class="w-full text-sm">
-    <thead class="border-b border-slate-200 bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
-      <tr>
-        <th class="px-4 py-3 font-medium">Producto</th>
-        <th class="px-4 py-3 font-medium">Categoría</th>
-        <th class="px-4 py-3 text-right font-medium">Costo u.</th>
-        <th class="px-4 py-3 text-right font-medium">Precio</th>
-        <th class="px-4 py-3 text-right font-medium">Margen</th>
-        <th class="px-4 py-3 text-right font-medium">Stock</th>
-        <th class="px-4 py-3 font-medium"></th>
-      </tr>
-    </thead>
-    <tbody class="divide-y divide-slate-100">
-      @for (p of products(); track p.id) {
-        <tr class="hover:bg-slate-50" [class.opacity-50]="!p.isActive">
-          <td class="px-4 py-3">
-            <div class="font-medium text-slate-900">{{ p.name }}</div>
-            @if (p.internalCode) { <div class="text-xs text-slate-400">{{ p.internalCode }}</div> }
-          </td>
-          <td class="px-4 py-3 text-slate-600">{{ p.categoryName }}</td>
-          <td class="px-4 py-3 text-right text-slate-600">S/ {{ p.unitCost | number: '1.2-2' }}</td>
-          <td class="px-4 py-3 text-right text-slate-900">S/ {{ p.salePrice | number: '1.2-2' }}</td>
-          <td class="px-4 py-3 text-right">
-            <span class="text-emerald-600">S/ {{ p.margin | number: '1.2-2' }}</span>
-            <span class="ml-1 text-xs text-slate-400">{{ p.marginRate * 100 | number: '1.0-0' }}%</span>
-          </td>
-          <td class="px-4 py-3 text-right">
-            <span [class.text-red-600]="p.isLowStock">{{ p.totalStock | number: '1.0-2' }}</span>
-            <span class="text-slate-400">/ {{ p.minStock | number: '1.0-0' }}</span>
-          </td>
-          <td class="px-4 py-3 text-right whitespace-nowrap">
-            @if (isAdmin()) {
-              <a [routerLink]="['/productos', p.id]" class="text-slate-600 hover:text-slate-900">Editar</a>
-              <button (click)="toggleActive(p)" class="ml-3 text-slate-500 hover:text-slate-900">
-                {{ p.isActive ? 'Desactivar' : 'Activar' }}
-              </button>
-            }
-          </td>
-        </tr>
-      } @empty {
+<!-- Normal mode table -->
+@if (!conteoMode()) {
+  <div class="mt-4 overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
+    <table class="min-w-full text-sm">
+      <thead class="border-b border-slate-200 bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
         <tr>
-          <td colspan="7" class="px-4 py-10 text-center text-slate-400">
-            {{ loading() ? 'Cargando…' : 'Sin productos.' }}
-          </td>
+          <th class="px-4 py-3 font-medium">Producto</th>
+          <th class="px-4 py-3 font-medium">Categoría</th>
+          <th class="px-4 py-3 text-right font-medium">Precio</th>
+          <th class="px-4 py-3 text-right font-medium">Costo u.</th>
+          <th class="px-4 py-3 text-right font-medium">Margen</th>
+          <th class="px-4 py-3 text-right font-medium">Almacén</th>
+          <th class="px-4 py-3 text-right font-medium">Mostrador</th>
+          <th class="px-4 py-3 text-right font-medium">Total / Mín</th>
+          <th class="px-4 py-3 text-right font-medium">Días stock</th>
+          <th class="px-4 py-3 font-medium"></th>
         </tr>
-      }
-    </tbody>
-  </table>
-</div>
+      </thead>
+      <tbody class="divide-y divide-slate-100">
+        @for (p of products(); track p.id) {
+          <tr class="hover:bg-slate-50" [class.opacity-50]="!p.isActive">
+            <td class="px-4 py-3">
+              <div class="font-medium text-slate-900">{{ p.name }}</div>
+              @if (p.internalCode) { <div class="text-xs text-slate-400">{{ p.internalCode }}</div> }
+              @if (p.isLowStock) {
+                <span class="mt-0.5 inline-block rounded-full bg-red-50 px-2 py-0.5 text-xs text-red-600">stock bajo</span>
+              }
+            </td>
+            <td class="px-4 py-3 text-slate-600">{{ p.categoryName }}</td>
+            <td class="px-4 py-3 text-right text-slate-900">S/ {{ p.salePrice | number: '1.2-2' }}</td>
+            <td class="px-4 py-3 text-right text-slate-500">S/ {{ p.unitCost | number: '1.2-2' }}</td>
+            <td class="px-4 py-3 text-right">
+              <span class="text-emerald-600">S/ {{ p.margin | number: '1.2-2' }}</span>
+              <span class="ml-1 text-xs text-slate-400">{{ p.marginRate * 100 | number: '1.0-0' }}%</span>
+            </td>
+            <td class="px-4 py-3 text-right text-slate-700">{{ p.warehouseStock | number: '1.0-2' }}</td>
+            <td class="px-4 py-3 text-right text-slate-700">{{ p.counterStock | number: '1.0-2' }}</td>
+            <td class="px-4 py-3 text-right">
+              <span [class.text-red-600]="p.isLowStock" class="font-medium">{{ p.totalStock | number: '1.0-2' }}</span>
+              <span class="text-slate-400"> / {{ p.minStock | number: '1.0-0' }}</span>
+            </td>
+            <td class="px-4 py-3 text-right">
+              @if (p.daysOfStock !== null) {
+                <span [class.text-orange-600]="p.daysOfStock !== null && p.daysOfStock <= 7"
+                      [class.text-slate-700]="p.daysOfStock === null || p.daysOfStock > 7">
+                  {{ p.daysOfStock | number: '1.0-1' }}d
+                </span>
+              } @else {
+                <span class="text-slate-300">—</span>
+              }
+            </td>
+            <td class="px-4 py-3 text-right whitespace-nowrap">
+              <button (click)="openTransfer(p)" class="text-slate-500 hover:text-slate-900">Mover</button>
+              <button (click)="openAdjust(p)" class="ml-2 text-slate-500 hover:text-slate-900">Ajustar</button>
+              @if (isAdmin()) {
+                <a [routerLink]="['/productos', p.id]" class="ml-2 text-slate-500 hover:text-slate-900">Editar</a>
+                <button (click)="toggleActive(p)" class="ml-2 text-slate-400 hover:text-slate-700 text-xs">
+                  {{ p.isActive ? 'Desactivar' : 'Activar' }}
+                </button>
+              }
+            </td>
+          </tr>
+        } @empty {
+          <tr>
+            <td colspan="10" class="px-4 py-10 text-center text-slate-400">
+              {{ loading() ? 'Cargando…' : 'Sin productos.' }}
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+}
+
+<!-- Conteo diario table -->
+@if (conteoMode()) {
+  <div class="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+    Ingresá el stock real de hoy para cada producto. Solo se registran los que cambian.
+  </div>
+
+  <div class="mt-3 overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
+    <table class="w-full text-sm">
+      <thead class="border-b border-slate-200 bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
+        <tr>
+          <th class="px-4 py-3 font-medium">Producto</th>
+          <th class="px-4 py-3 font-medium">Unidad</th>
+          <th class="px-4 py-3 text-center font-medium">Almacén</th>
+          <th class="px-4 py-3 text-center font-medium">Mostrador</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-slate-100">
+        @for (item of conteoItems; track item.productId) {
+          <tr class="hover:bg-slate-50">
+            <td class="px-4 py-2 font-medium text-slate-900">{{ item.name }}</td>
+            <td class="px-4 py-2 text-slate-500">{{ item.saleUnit }}</td>
+            <td class="px-4 py-2">
+              <input type="number" min="0" step="1" [(ngModel)]="item.warehouseStock"
+                     class="w-24 rounded-lg border border-slate-300 px-2 py-1 text-right text-sm outline-none focus:border-slate-700" />
+            </td>
+            <td class="px-4 py-2">
+              <input type="number" min="0" step="1" [(ngModel)]="item.counterStock"
+                     class="w-24 rounded-lg border border-slate-300 px-2 py-1 text-right text-sm outline-none focus:border-slate-700" />
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+}
+
+<!-- Transfer / Adjust dialog -->
+@if (dialogMode(); as mode) {
+  <div class="fixed inset-0 z-20 grid place-items-center bg-slate-900/30 p-4" (click)="closeDialog()">
+    <div class="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl" (click)="$event.stopPropagation()">
+      <h2 class="text-lg font-semibold text-slate-900">
+        {{ mode === 'transfer' ? 'Mover almacén → mostrador' : 'Ajustar inventario' }}
+      </h2>
+      <p class="mt-1 text-sm text-slate-500">
+        {{ current()?.name }}
+        · almacén {{ current()?.warehouseStock | number: '1.0-2' }}
+        · mostrador {{ current()?.counterStock | number: '1.0-2' }}
+        <span class="ml-1 text-slate-400">{{ current()?.saleUnit }}</span>
+      </p>
+
+      <div class="mt-4 space-y-4">
+        @if (mode === 'adjust') {
+          <div class="grid grid-cols-2 gap-3">
+            <label class="block">
+              <span class="text-sm text-slate-600">Tipo</span>
+              <select [(ngModel)]="adjType" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm">
+                @for (t of adjustmentTypes; track t.value) {
+                  <option [ngValue]="t.value">{{ t.label }}</option>
+                }
+              </select>
+            </label>
+            <label class="block">
+              <span class="text-sm text-slate-600">Ubicación</span>
+              <select [(ngModel)]="adjLocation" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm">
+                <option [ngValue]="StockLocation.Warehouse">Almacén</option>
+                <option [ngValue]="StockLocation.Counter">Mostrador</option>
+              </select>
+            </label>
+            <label class="block">
+              <span class="text-sm text-slate-600">Operación</span>
+              <select [(ngModel)]="adjDirection" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm">
+                <option value="remove">Quitar</option>
+                <option value="add">Agregar</option>
+              </select>
+            </label>
+            <label class="block">
+              <span class="text-sm text-slate-600">Cantidad</span>
+              <input type="number" min="0" step="1" [(ngModel)]="qty"
+                     class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+            </label>
+          </div>
+        } @else {
+          <label class="block">
+            <span class="text-sm text-slate-600">Cantidad a mover</span>
+            <input type="number" min="0" step="1" [(ngModel)]="qty"
+                   class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+          </label>
+        }
+
+        <label class="block">
+          <span class="text-sm text-slate-600">{{ mode === 'adjust' ? 'Motivo (opcional)' : 'Nota (opcional)' }}</span>
+          <input [(ngModel)]="notes" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+        </label>
+
+        @if (error()) { <p class="text-sm text-red-600">{{ error() }}</p> }
+      </div>
+
+      <div class="mt-6 flex justify-end gap-3">
+        <button (click)="closeDialog()" class="rounded-lg px-4 py-2 text-sm text-slate-600 hover:bg-slate-100">
+          Cancelar
+        </button>
+        <button (click)="confirmDialog()" [disabled]="saving()"
+                class="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50">
+          {{ saving() ? 'Guardando…' : 'Confirmar' }}
+        </button>
+      </div>
+    </div>
+  </div>
+}

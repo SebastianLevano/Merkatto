@@ -10,7 +10,8 @@ public record InventoryRow(
     decimal CounterStock,
     decimal TotalStock,
     decimal MinStock,
-    bool IsLowStock);
+    bool IsLowStock,
+    decimal? DaysOfStock);
 
 /// <summary>Move stock from warehouse to counter (the "abrir mercadería" action).</summary>
 public record TransferRequest(long ProductId, decimal Quantity, string? Notes);
@@ -25,6 +26,10 @@ public record AdjustmentRequest(
     StockLocation Location,
     decimal Quantity,
     string? Reason);
+
+public record BatchCountItem(long ProductId, decimal WarehouseStock, decimal CounterStock);
+
+public record BatchCountRequest(IReadOnlyList<BatchCountItem> Items, string? Notes);
 
 public record MovementRow(
     long Id,

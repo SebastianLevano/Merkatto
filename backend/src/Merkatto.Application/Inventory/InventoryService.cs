@@ -25,9 +25,23 @@ public sealed class InventoryService(IAppDbContext db, IDateTimeProvider clock)
         var total = await q.CountAsync(ct);
         var products = await q.OrderBy(p => p.Name).Skip(query.Skip).Take(query.PageSize).ToListAsync(ct);
 
+        var productIds = products.Select(p => p.Id).ToList();
+        var window = clock.UtcNow.AddDays(-30);
+        var consumption = await db.StockMovements
+            .Where(m => productIds.Contains(m.ProductId) && m.Quantity < 0 && m.OccurredAt >= window)
+            .GroupBy(m => m.ProductId)
+            .Select(g => new { ProductId = g.Key, Total = -g.Sum(m => m.Quantity) })
+            .ToDictionaryAsync(x => x.ProductId, x => x.Total, ct);
+
         var rows = products
-            .Select(p => new InventoryRow(p.Id, p.Name, p.SaleUnit, p.WarehouseStock, p.CounterStock,
-                p.TotalStock, p.MinStock, p.IsLowStock))
+            .Select(p =>
+            {
+                decimal? daysOfStock = null;
+                if (consumption.TryGetValue(p.Id, out var consumed) && consumed > 0)
+                    daysOfStock = Math.Round(p.TotalStock / (consumed / 30m), 1);
+                return new InventoryRow(p.Id, p.Name, p.SaleUnit, p.WarehouseStock, p.CounterStock,
+                    p.TotalStock, p.MinStock, p.IsLowStock, daysOfStock);
+            })
             .Where(r => !lowStockOnly || r.IsLowStock)
             .ToList();
 
@@ -105,6 +119,65 @@ public sealed class InventoryService(IAppDbContext db, IDateTimeProvider clock)
             .ToListAsync(ct);
 
         return new PagedResult<MovementRow>(rows, total, query.Page, query.PageSize);
+    }
+
+    public async Task BatchCountAsync(BatchCountRequest req, CancellationToken ct)
+    {
+        if (req.Items.Count == 0) return;
+
+        var productIds = req.Items.Select(i => i.ProductId).ToList();
+        var products = await db.Products.Where(p => productIds.Contains(p.Id)).ToListAsync(ct);
+        var map = products.ToDictionary(p => p.Id);
+
+        var now = clock.UtcNow;
+        var today = clock.Today;
+        var notes = string.IsNullOrWhiteSpace(req.Notes) ? "Conteo diario" : req.Notes.Trim();
+        var pending = new List<(InventoryAdjustment Adj, long ProductId, StockLocation Location, decimal Delta)>();
+
+        foreach (var item in req.Items)
+        {
+            if (!map.TryGetValue(item.ProductId, out var product)) continue;
+            if (item.WarehouseStock < 0 || item.CounterStock < 0) continue;
+
+            var wd = item.WarehouseStock - product.WarehouseStock;
+            var cd = item.CounterStock - product.CounterStock;
+
+            if (wd != 0)
+            {
+                product.WarehouseStock = item.WarehouseStock;
+                var adj = new InventoryAdjustment
+                {
+                    ProductId = product.Id, Type = AdjustmentType.Correction,
+                    Location = StockLocation.Warehouse, Quantity = wd, Reason = notes, Date = today
+                };
+                db.InventoryAdjustments.Add(adj);
+                pending.Add((adj, product.Id, StockLocation.Warehouse, wd));
+            }
+
+            if (cd != 0)
+            {
+                product.CounterStock = item.CounterStock;
+                var adj = new InventoryAdjustment
+                {
+                    ProductId = product.Id, Type = AdjustmentType.Correction,
+                    Location = StockLocation.Counter, Quantity = cd, Reason = notes, Date = today
+                };
+                db.InventoryAdjustments.Add(adj);
+                pending.Add((adj, product.Id, StockLocation.Counter, cd));
+            }
+        }
+
+        await db.SaveChangesAsync(ct);
+
+        foreach (var (adj, productId, location, delta) in pending)
+            db.StockMovements.Add(new StockMovement
+            {
+                ProductId = productId, MovementType = MovementType.Adjustment,
+                Location = location, Quantity = delta, SourceType = "BatchCount",
+                SourceId = adj.Id, OccurredAt = now, Notes = notes
+            });
+
+        if (pending.Count > 0) await db.SaveChangesAsync(ct);
     }
 
     private async Task<Product> GetProductAsync(long id, CancellationToken ct) =>

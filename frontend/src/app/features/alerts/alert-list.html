@@ -1,0 +1,30 @@
+<h1 class="text-xl font-semibold text-slate-900">Alertas</h1>
+<p class="mt-1 text-sm text-slate-500">Revisión automática del estado operativo del negocio.</p>
+
+<div class="mt-5 space-y-3">
+  @if (loading()) {
+    <p class="py-10 text-center text-slate-400">Cargando…</p>
+  } @else if (alerts().length === 0) {
+    <div class="rounded-2xl border border-emerald-200 bg-emerald-50 p-6 text-center">
+      <p class="text-lg font-semibold text-emerald-700">✓ Todo en orden</p>
+      <p class="mt-1 text-sm text-emerald-600">No hay alertas activas en este momento.</p>
+    </div>
+  } @else {
+    @for (a of alerts(); track a.type) {
+      <div class="rounded-2xl border p-4 shadow-sm" [ngClass]="severityClass(a.severity)">
+        <div class="flex items-start gap-3">
+          <span class="mt-0.5 text-lg leading-none" [ngClass]="iconClass(a.severity)">{{ icon(a.type) }}</span>
+          <div class="flex-1">
+            <div class="flex items-center gap-2">
+              <span class="text-xs font-medium uppercase tracking-wide text-slate-500">{{ label(a.type) }}</span>
+            </div>
+            <p class="mt-0.5 font-medium text-slate-900">{{ a.message }}</p>
+            @if (a.reference) {
+              <p class="mt-1 text-sm text-slate-500">{{ a.reference }}</p>
+            }
+          </div>
+        </div>
+      </div>
+    }
+  }
+</div>

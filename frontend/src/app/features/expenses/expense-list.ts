@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { AuthService } from '../../core/auth/auth.service';
 import { ExpensesService } from './expenses.service';
 import { EXPENSE_LABEL, ExpenseItem, ExpenseType } from './expense.models';
+import { ReportsService } from '../reports/reports.service';
 
 function startOfMonth(): string {
   const d = new Date();
@@ -18,6 +19,7 @@ function startOfMonth(): string {
 export class ExpenseList {
   private readonly service = inject(ExpensesService);
   private readonly auth = inject(AuthService);
+  private readonly reports = inject(ReportsService);
 
   protected readonly isAdmin = this.auth.isAdmin;
   protected readonly EXPENSE_LABEL = EXPENSE_LABEL;
@@ -100,5 +102,10 @@ export class ExpenseList {
   protected remove(e: ExpenseItem): void {
     if (!confirm('¿Eliminar este gasto?')) return;
     this.service.delete(e.id).subscribe(() => this.load());
+  }
+
+  protected downloadExcel(): void {
+    const d = new Date(this.from);
+    this.reports.downloadExpensesExcel(d.getFullYear(), d.getMonth() + 1);
   }
 }

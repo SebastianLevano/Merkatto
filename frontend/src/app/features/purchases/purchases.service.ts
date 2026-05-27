@@ -35,7 +35,11 @@ export class PurchasesService {
     return this.http.get<Supplier[]>(`${this.api}/suppliers`);
   }
 
-  createSupplier(name: string, phone: string | null): Observable<{ id: number }> {
-    return this.http.post<{ id: number }>(`${this.api}/suppliers`, { name, phone });
+  createSupplier(name: string, phone: string | null, notes: string | null = null): Observable<{ id: number }> {
+    return this.http.post<{ id: number }>(`${this.api}/suppliers`, { name, phone, notes });
+  }
+
+  updateSupplier(id: number, name: string, phone: string | null, notes: string | null): Observable<void> {
+    return this.http.put<void>(`${this.api}/suppliers/${id}`, { name, phone, notes });
   }
 }

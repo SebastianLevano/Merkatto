@@ -1,6 +1,6 @@
 namespace Merkatto.Application.Catalog;
 
-/// <summary>Compact product row for lists (includes derived cost/margin and stock flags).</summary>
+/// <summary>Compact product row for lists (includes derived cost/margin, stock flags and rotation estimate).</summary>
 public record ProductListItem(
     long Id,
     string Name,
@@ -12,10 +12,13 @@ public record ProductListItem(
     decimal UnitCost,
     decimal Margin,
     decimal MarginRate,
+    decimal WarehouseStock,
+    decimal CounterStock,
     decimal TotalStock,
     decimal MinStock,
     bool IsLowStock,
-    bool IsActive);
+    bool IsActive,
+    decimal? DaysOfStock);
 
 /// <summary>Full product detail for the edit form.</summary>
 public record ProductDetail(

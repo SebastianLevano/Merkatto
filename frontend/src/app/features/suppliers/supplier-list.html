@@ -1,0 +1,81 @@
+<div class="flex items-center justify-between">
+  <div>
+    <h1 class="text-xl font-semibold text-slate-900">Proveedores</h1>
+    <p class="mt-1 text-sm text-slate-500">
+      <a routerLink="/compras" class="hover:text-slate-700">← Compras</a>
+    </p>
+  </div>
+  @if (isAdmin()) {
+    <button (click)="openCreate()"
+            class="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800">
+      Nuevo proveedor
+    </button>
+  }
+</div>
+
+<div class="mt-4 overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
+  <table class="w-full text-sm">
+    <thead class="border-b border-slate-200 bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
+      <tr>
+        <th class="px-4 py-3 font-medium">Nombre</th>
+        <th class="px-4 py-3 font-medium">Teléfono</th>
+        <th class="px-4 py-3 font-medium">Notas</th>
+        <th class="px-4 py-3 font-medium"></th>
+      </tr>
+    </thead>
+    <tbody class="divide-y divide-slate-100">
+      @for (s of suppliers(); track s.id) {
+        <tr class="hover:bg-slate-50">
+          <td class="px-4 py-3 font-medium text-slate-900">{{ s.name }}</td>
+          <td class="px-4 py-3 text-slate-600">{{ s.phone ?? '—' }}</td>
+          <td class="px-4 py-3 text-slate-500">{{ s.notes ?? '—' }}</td>
+          <td class="px-4 py-3 text-right">
+            @if (isAdmin()) {
+              <button (click)="openEdit(s)" class="text-slate-500 hover:text-slate-900">Editar</button>
+            }
+          </td>
+        </tr>
+      } @empty {
+        <tr>
+          <td colspan="4" class="px-4 py-10 text-center text-slate-400">
+            {{ loading() ? 'Cargando…' : 'Sin proveedores registrados.' }}
+          </td>
+        </tr>
+      }
+    </tbody>
+  </table>
+</div>
+
+@if (dialogMode(); as mode) {
+  <div class="fixed inset-0 z-20 grid place-items-center bg-slate-900/30 p-4" (click)="close()">
+    <div class="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl" (click)="$event.stopPropagation()">
+      <h2 class="text-lg font-semibold text-slate-900">
+        {{ mode === 'create' ? 'Nuevo proveedor' : 'Editar proveedor' }}
+      </h2>
+
+      <div class="mt-4 space-y-4">
+        <label class="block">
+          <span class="text-sm text-slate-600">Nombre <span class="text-red-500">*</span></span>
+          <input [(ngModel)]="formName" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900" />
+        </label>
+        <label class="block">
+          <span class="text-sm text-slate-600">Teléfono (opcional)</span>
+          <input [(ngModel)]="formPhone" type="tel" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900" />
+        </label>
+        <label class="block">
+          <span class="text-sm text-slate-600">Notas (opcional)</span>
+          <input [(ngModel)]="formNotes" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900" />
+        </label>
+        @if (error()) { <p class="text-sm text-red-600">{{ error() }}</p> }
+      </div>
+
+      <div class="mt-6 flex justify-end gap-3">
+        <button (click)="close()" class="rounded-lg px-4 py-2 text-sm text-slate-600 hover:bg-slate-100">Cancelar</button>
+        <button (click)="save()" [disabled]="saving() || !formName.trim()"
+                class="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50">
+          {{ saving() ? 'Guardando…' : 'Guardar' }}
+        </button>
+      </div>
+    </div>
+  </div>
+}

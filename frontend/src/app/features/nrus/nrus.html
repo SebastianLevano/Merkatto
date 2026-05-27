@@ -1,0 +1,92 @@
+<h1 class="text-xl font-semibold text-slate-900">Estimación NRUS</h1>
+<p class="mt-1 text-sm text-slate-500">
+  Referencial — basado en tus ingresos y compras registradas.
+  <strong class="text-slate-700">Consulta a tu contador para declarar correctamente.</strong>
+</p>
+
+@if (loading()) {
+  <p class="mt-6 text-center text-slate-400">Cargando…</p>
+} @else if (current()) {
+
+  <!-- Current month card -->
+  <div class="mt-5 rounded-2xl border p-6 shadow-sm" [class]="categoryClass(current()!)">
+    <p class="text-xs font-medium uppercase tracking-wide opacity-70">
+      {{ monthName(current()!.month) }} {{ current()!.year }} — Mes actual
+    </p>
+
+    <div class="mt-3 grid grid-cols-2 gap-4 sm:grid-cols-4">
+      <div>
+        <p class="text-xs opacity-60">Ingresos</p>
+        <p class="mt-1 text-lg font-bold">S/ {{ current()!.monthlyIncome | number: '1.2-2' }}</p>
+      </div>
+      <div>
+        <p class="text-xs opacity-60">Compras</p>
+        <p class="mt-1 text-lg font-bold">S/ {{ current()!.monthlyPurchases | number: '1.2-2' }}</p>
+      </div>
+      <div>
+        <p class="text-xs opacity-60">Categoría</p>
+        <p class="mt-1 text-lg font-bold">{{ categoryLabel(current()!) }}</p>
+      </div>
+      <div>
+        <p class="text-xs opacity-60">Cuota mensual</p>
+        <p class="mt-1 text-lg font-bold">
+          @if (current()!.quota) { S/ {{ current()!.quota | number: '1.0-0' }} }
+          @else { Revisar régimen }
+        </p>
+      </div>
+    </div>
+
+    @if (current()!.exceedsLimit) {
+      <p class="mt-4 rounded-lg bg-red-100 p-3 text-sm text-red-800">
+        ⚠ Este mes supera el límite de S/ 8,000. Consulta si debes cambiar de régimen tributario.
+      </p>
+    }
+  </div>
+
+  <!-- Brackets reference -->
+  <div class="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+    <div class="rounded-xl border border-emerald-200 bg-emerald-50 p-4">
+      <p class="text-sm font-semibold text-emerald-800">Categoría 1</p>
+      <p class="text-xs text-emerald-700 mt-1">Ingresos y compras ≤ S/ 5,000/mes</p>
+      <p class="mt-2 text-xl font-bold text-emerald-800">S/ 20 / mes</p>
+    </div>
+    <div class="rounded-xl border border-amber-200 bg-amber-50 p-4">
+      <p class="text-sm font-semibold text-amber-800">Categoría 2</p>
+      <p class="text-xs text-amber-700 mt-1">Ingresos y compras ≤ S/ 8,000/mes</p>
+      <p class="mt-2 text-xl font-bold text-amber-800">S/ 50 / mes</p>
+    </div>
+  </div>
+
+  <!-- History table -->
+  @if (history().length > 0) {
+    <div class="mt-6 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+      <div class="border-b border-slate-100 px-4 py-3">
+        <h2 class="text-sm font-medium text-slate-700">Historial reciente</h2>
+      </div>
+      <table class="w-full text-sm">
+        <thead class="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+          <tr>
+            <th class="px-4 py-3 text-left font-medium">Mes</th>
+            <th class="px-4 py-3 text-right font-medium">Ingresos</th>
+            <th class="px-4 py-3 text-right font-medium">Compras</th>
+            <th class="px-4 py-3 text-center font-medium">Categoría</th>
+            <th class="px-4 py-3 text-right font-medium">Cuota est.</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100">
+          @for (row of history(); track row.year + '-' + row.month) {
+            <tr class="hover:bg-slate-50">
+              <td class="px-4 py-3 font-medium text-slate-900">{{ monthName(row.month) }} {{ row.year }}</td>
+              <td class="px-4 py-3 text-right text-slate-600">S/ {{ row.monthlyIncome | number: '1.2-2' }}</td>
+              <td class="px-4 py-3 text-right text-slate-600">S/ {{ row.monthlyPurchases | number: '1.2-2' }}</td>
+              <td class="px-4 py-3 text-center" [class]="rowCategoryClass(row)">{{ categoryLabel(row) }}</td>
+              <td class="px-4 py-3 text-right text-slate-900">
+                @if (row.quota) { S/ {{ row.quota | number: '1.0-0' }} } @else { — }
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+}

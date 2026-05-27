@@ -50,6 +50,14 @@ public sealed class AuthController(AuthService auth) : ControllerBase
         return user is null ? Unauthorized() : Ok(user);
     }
 
+    [HttpPut("change-password")]
+    [Authorize]
+    public async Task<IActionResult> ChangePassword(ChangePasswordRequest request, CancellationToken ct)
+    {
+        await auth.ChangePasswordAsync(request, ct);
+        return NoContent();
+    }
+
     private AuthResult BuildResult(TokenPair pair)
     {
         Response.Cookies.Append(RefreshCookie, pair.RefreshToken, new CookieOptions

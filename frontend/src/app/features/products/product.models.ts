@@ -17,10 +17,13 @@ export interface ProductListItem {
   unitCost: number;
   margin: number;
   marginRate: number;
+  warehouseStock: number;
+  counterStock: number;
   totalStock: number;
   minStock: number;
   isLowStock: boolean;
   isActive: boolean;
+  daysOfStock: number | null;
 }
 
 export interface ProductDetail {
@@ -64,4 +67,10 @@ export type UpdateProductRequest = Omit<CreateProductRequest, 'initialWarehouseS
 export interface LookupItem {
   id: number;
   name: string;
+}
+
+export interface BatchCountItem {
+  productId: number;
+  warehouseStock: number;
+  counterStock: number;
 }

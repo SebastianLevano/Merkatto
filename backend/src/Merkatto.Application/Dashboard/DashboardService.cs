@@ -1,9 +1,10 @@
+using Merkatto.Application.Alerts;
 using Merkatto.Application.Common;
 using Microsoft.EntityFrameworkCore;
 
 namespace Merkatto.Application.Dashboard;
 
-public sealed class DashboardService(IAppDbContext db, IDateTimeProvider clock)
+public sealed class DashboardService(IAppDbContext db, IDateTimeProvider clock, AlertService alertService)
 {
     public async Task<DashboardSummary> GetSummaryAsync(CancellationToken ct)
     {
@@ -39,13 +40,40 @@ public sealed class DashboardService(IAppDbContext db, IDateTimeProvider clock)
             .Select(c => new DashboardClosingRow(c.BusinessDate, c.GrossIncome, c.NetFlow))
             .ToListAsync(ct);
 
+        var alerts = await alertService.GetAlertsAsync(ct);
+
+        var topProducts = await db.Products
+            .Where(p => p.IsActive && p.SalePrice > 0 && p.UnitsPerPurchaseUnit > 0)
+            .OrderByDescending(p => (p.SalePrice - p.LastPurchaseCost / p.UnitsPerPurchaseUnit) / p.SalePrice)
+            .Take(5)
+            .Select(p => new
+            {
+                p.Id,
+                p.Name,
+                Category = p.Category != null ? p.Category.Name : null,
+                p.SalePrice,
+                p.LastPurchaseCost,
+                p.UnitsPerPurchaseUnit
+            })
+            .ToListAsync(ct);
+
+        var top = topProducts.Select(p =>
+        {
+            var unitCost = p.UnitsPerPurchaseUnit > 0 ? p.LastPurchaseCost / p.UnitsPerPurchaseUnit : 0m;
+            var margin = p.SalePrice - unitCost;
+            var rate = p.SalePrice > 0 ? margin / p.SalePrice : 0m;
+            return new DashboardTopProduct(p.Id, p.Name, p.Category, p.SalePrice, margin, rate);
+        }).ToList();
+
         return new DashboardSummary(
             lastClosing,
             todayExpenses,
             lowStockCount,
             totalCredit,
             activeCustomers,
-            recentClosings.OrderBy(r => r.Date).ToList()
+            recentClosings.OrderBy(r => r.Date).ToList(),
+            alerts.Count,
+            top
         );
     }
 }

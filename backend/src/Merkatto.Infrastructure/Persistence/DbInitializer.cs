@@ -1,6 +1,7 @@
 using Merkatto.Application.Auth;
 using Merkatto.Application.Common;
 using Merkatto.Domain.Auth;
+using Merkatto.Domain.Common;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
@@ -20,6 +21,8 @@ public sealed class DbInitializer(
     public async Task RunAsync(CancellationToken ct = default)
     {
         await db.Database.MigrateAsync(ct);
+
+        await SeedBusinessNameAsync(ct);
 
         if (await db.Users.AnyAsync(ct))
             return;
@@ -43,6 +46,20 @@ public sealed class DbInitializer(
         await db.SaveChangesAsync(ct);
         logger.LogInformation("Seeded administrator {Email}.", seed.AdminEmail);
     }
+
+    private async Task SeedBusinessNameAsync(CancellationToken ct)
+    {
+        var exists = await db.AppSettings.AnyAsync(s => s.Key == AppSettingKeys.BusinessName, ct);
+        if (!exists)
+        {
+            db.AppSettings.Add(new AppSetting
+            {
+                Key = AppSettingKeys.BusinessName,
+                Value = string.IsNullOrWhiteSpace(seed.BusinessName) ? "Mi Bodega" : seed.BusinessName
+            });
+            await db.SaveChangesAsync(ct);
+        }
+    }
 }
 
 public sealed class SeedSettings
@@ -51,4 +68,5 @@ public sealed class SeedSettings
     public string AdminEmail { get; set; } = string.Empty;
     public string AdminName { get; set; } = "Administrador";
     public string AdminPassword { get; set; } = string.Empty;
+    public string BusinessName { get; set; } = string.Empty;
 }
