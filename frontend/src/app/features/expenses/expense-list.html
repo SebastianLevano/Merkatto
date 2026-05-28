@@ -38,14 +38,17 @@
     </thead>
     <tbody class="divide-y divide-slate-100">
       @for (e of expenses(); track e.id) {
-        <tr class="hover:bg-slate-50">
+        <tr (click)="openEdit(e)"
+            [class.cursor-pointer]="isAdmin()"
+            [class.hover:bg-slate-50]="isAdmin()"
+            [title]="isAdmin() ? 'Editar gasto' : ''">
           <td class="px-4 py-3 text-slate-500">{{ e.date | date: 'dd/MM/yyyy' }}</td>
           <td class="px-4 py-3"><span class="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600">{{ label(e.type) }}</span></td>
           <td class="px-4 py-3 text-slate-600">{{ e.description ?? '—' }}</td>
           <td class="px-4 py-3 text-right font-medium text-slate-900">S/ {{ e.amount | number: '1.2-2' }}</td>
           <td class="px-4 py-3 text-right">
             @if (isAdmin()) {
-              <button (click)="remove(e)" class="text-slate-400 hover:text-red-600">Eliminar</button>
+              <button (click)="askDelete(e, $event)" class="text-slate-400 hover:text-red-600">Eliminar</button>
             }
           </td>
         </tr>
@@ -57,9 +60,9 @@
 </div>
 
 @if (showDialog()) {
-  <div class="fixed inset-0 z-20 grid place-items-center bg-slate-900/30 p-4" (click)="showDialog.set(false)">
+  <div class="fixed inset-0 z-20 grid place-items-center bg-slate-900/30 p-4" (click)="closeDialog()">
     <div class="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl" (click)="$event.stopPropagation()">
-      <h2 class="text-lg font-semibold text-slate-900">Registrar gasto</h2>
+      <h2 class="text-lg font-semibold text-slate-900">{{ editingId() ? 'Editar gasto' : 'Registrar gasto' }}</h2>
       <div class="mt-4 space-y-4">
         <div class="grid grid-cols-2 gap-3">
           <label class="block">
@@ -84,9 +87,29 @@
         @if (error()) { <p class="text-sm text-red-600">{{ error() }}</p> }
       </div>
       <div class="mt-6 flex justify-end gap-3">
-        <button (click)="showDialog.set(false)" class="rounded-lg px-4 py-2 text-sm text-slate-600 hover:bg-slate-100">Cancelar</button>
+        <button (click)="closeDialog()" class="rounded-lg px-4 py-2 text-sm text-slate-600 hover:bg-slate-100">Cancelar</button>
         <button (click)="save()" [disabled]="saving()" class="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50">
-          {{ saving() ? 'Guardando…' : 'Guardar' }}
+          {{ saving() ? 'Guardando…' : (editingId() ? 'Guardar cambios' : 'Guardar') }}
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- Delete confirmation -->
+@if (toDelete(); as e) {
+  <div class="fixed inset-0 z-20 grid place-items-center bg-slate-900/30 p-4" (click)="cancelDelete()">
+    <div class="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl" (click)="$event.stopPropagation()">
+      <h2 class="text-lg font-semibold text-slate-900">Eliminar gasto</h2>
+      <p class="mt-2 text-sm text-slate-600">
+        ¿Eliminar el gasto del {{ e.date | date: 'dd/MM/yyyy' }} por <span class="font-medium text-slate-900">S/ {{ e.amount | number: '1.2-2' }}</span>?
+        Si ya hay un cierre del día registrado, el total de gastos del cierre <strong>no</strong> se recalcula automáticamente.
+      </p>
+      <div class="mt-6 flex justify-end gap-3">
+        <button (click)="cancelDelete()" class="rounded-lg px-4 py-2 text-sm text-slate-600 hover:bg-slate-100">Cancelar</button>
+        <button (click)="confirmDelete()" [disabled]="deleting()"
+                class="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50">
+          {{ deleting() ? 'Eliminando…' : 'Eliminar' }}
         </button>
       </div>
     </div>

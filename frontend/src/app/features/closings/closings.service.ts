@@ -32,7 +32,15 @@ export class ClosingsService {
     return this.http.get<DailyClosingDetail>(`${this.api}/daily-closings/${date}`);
   }
 
+  getById(id: number): Observable<DailyClosingDetail> {
+    return this.http.get<DailyClosingDetail>(`${this.api}/daily-closings/by-id/${id}`);
+  }
+
   create(req: CreateDailyClosingRequest): Observable<{ id: number }> {
     return this.http.post<{ id: number }>(`${this.api}/daily-closings`, req);
+  }
+
+  update(id: number, req: CreateDailyClosingRequest): Observable<void> {
+    return this.http.put<void>(`${this.api}/daily-closings/${id}`, req);
   }
 }

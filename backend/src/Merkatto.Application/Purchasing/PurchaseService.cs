@@ -54,8 +54,21 @@ public sealed class PurchaseService(IAppDbContext db, IDateTimeProvider clock)
         if (req.Items.Count == 0)
             throw new BusinessRuleException("La compra debe tener al menos un producto.");
 
-        if (req.SupplierId is { } sid && !await db.Suppliers.AnyAsync(s => s.Id == sid, ct))
-            throw new NotFoundException("El proveedor indicado no existe.");
+        // Supplier comes in as free text: link to an existing one (case-insensitive) or create.
+        long? supplierId = null;
+        var supplierName = req.SupplierName?.Trim();
+        if (!string.IsNullOrEmpty(supplierName))
+        {
+            var existing = await db.Suppliers
+                .FirstOrDefaultAsync(s => s.Name.ToLower() == supplierName.ToLower(), ct);
+            if (existing is null)
+            {
+                existing = new Supplier { Name = supplierName };
+                db.Suppliers.Add(existing);
+                await db.SaveChangesAsync(ct);
+            }
+            supplierId = existing.Id;
+        }
 
         var productIds = req.Items.Select(i => i.ProductId).Distinct().ToList();
         var products = await db.Products.Where(p => productIds.Contains(p.Id)).ToDictionaryAsync(p => p.Id, ct);
@@ -65,28 +78,33 @@ public sealed class PurchaseService(IAppDbContext db, IDateTimeProvider clock)
 
         var purchase = new Purchase
         {
-            SupplierId = req.SupplierId,
+            SupplierId = supplierId,
             Date = req.Date,
             Notes = string.IsNullOrWhiteSpace(req.Notes) ? null : req.Notes.Trim()
         };
 
         foreach (var line in req.Items)
         {
+            if (line.Paquetes <= 0) throw new BusinessRuleException("La cantidad de paquetes debe ser mayor a cero.");
+            if (line.UnidadesPorPaquete < 1) throw new BusinessRuleException("Las unidades por paquete deben ser al menos 1.");
+            if (line.CostoPorPaquete < 0) throw new BusinessRuleException("El costo por paquete no puede ser negativo.");
+
             var product = products[line.ProductId];
-            var factor = Math.Max(product.UnitsPerPurchaseUnit, 1);
 
             purchase.Items.Add(new PurchaseItem
             {
                 ProductId = product.Id,
-                PurchaseUnit = product.PurchaseUnit,
-                Quantity = line.Quantity,
-                UnitCostSnapshot = line.UnitCost,
-                ConversionFactorSnapshot = factor
+                PurchaseUnit = "paquete",
+                Quantity = line.Paquetes,
+                UnitCostSnapshot = line.CostoPorPaquete,
+                ConversionFactorSnapshot = line.UnidadesPorPaquete
             });
 
-            // Convert to sale units, add to warehouse, and refresh last purchase cost.
-            product.WarehouseStock += line.Quantity * factor;
-            product.LastPurchaseCost = line.UnitCost;
+            // Stock entering the warehouse, in sale units. Also refresh the product so the
+            // catalog mirrors the latest purchase (cost + units/paquete).
+            product.WarehouseStock += line.Paquetes * line.UnidadesPorPaquete;
+            product.LastPurchaseCost = line.CostoPorPaquete;
+            product.UnitsPerPurchaseUnit = line.UnidadesPorPaquete;
         }
 
         purchase.TotalCost = purchase.Items.Sum(i => i.Subtotal);
@@ -110,5 +128,144 @@ public sealed class PurchaseService(IAppDbContext db, IDateTimeProvider clock)
         await db.SaveChangesAsync(ct);
 
         return purchase.Id;
+    }
+
+    /// <summary>
+    /// Replaces a purchase's metadata and items. Reverses the stock from the old items, applies
+    /// the stock of the new items, and refreshes each affected product's last-known cost and
+    /// units-per-package from the new lines. Rejected if reversing the old items would push any
+    /// product's warehouse stock below zero (because stock may already have left in the meantime).
+    /// </summary>
+    public async Task UpdateAsync(long id, CreatePurchaseRequest req, CancellationToken ct)
+    {
+        if (req.Items.Count == 0)
+            throw new BusinessRuleException("La compra debe tener al menos un producto.");
+
+        var purchase = await db.Purchases
+            .Include(p => p.Items).ThenInclude(i => i.Product)
+            .FirstOrDefaultAsync(p => p.Id == id, ct)
+            ?? throw new NotFoundException("Compra no encontrada.");
+
+        // Reverse the stock from the existing items (validated below: no negative stock).
+        foreach (var oldItem in purchase.Items)
+        {
+            if (oldItem.Product is null) continue;
+            if (oldItem.Product.WarehouseStock < oldItem.QuantityInSaleUnits)
+                throw new BusinessRuleException(
+                    $"No se puede editar: ya salió inventario del producto '{oldItem.Product.Name}' y revertir lo dejaría negativo.");
+            oldItem.Product.WarehouseStock -= oldItem.QuantityInSaleUnits;
+        }
+
+        // Remove old items and matching stock movements.
+        db.PurchaseItems.RemoveRange(purchase.Items);
+        var oldMovements = await db.StockMovements
+            .Where(m => m.SourceType == "Purchase" && m.SourceId == purchase.Id)
+            .ToListAsync(ct);
+        db.StockMovements.RemoveRange(oldMovements);
+
+        // Resolve supplier (same logic as Create).
+        long? supplierId = null;
+        var supplierName = req.SupplierName?.Trim();
+        if (!string.IsNullOrEmpty(supplierName))
+        {
+            var existing = await db.Suppliers
+                .FirstOrDefaultAsync(s => s.Name.ToLower() == supplierName.ToLower(), ct);
+            if (existing is null)
+            {
+                existing = new Supplier { Name = supplierName };
+                db.Suppliers.Add(existing);
+                await db.SaveChangesAsync(ct);
+            }
+            supplierId = existing.Id;
+        }
+
+        purchase.SupplierId = supplierId;
+        purchase.Date = req.Date;
+        purchase.Notes = string.IsNullOrWhiteSpace(req.Notes) ? null : req.Notes.Trim();
+        purchase.Items.Clear();
+
+        var productIds = req.Items.Select(i => i.ProductId).Distinct().ToList();
+        var products = await db.Products.Where(p => productIds.Contains(p.Id)).ToDictionaryAsync(p => p.Id, ct);
+        var missing = productIds.FirstOrDefault(pid => !products.ContainsKey(pid));
+        if (missing != 0) throw new NotFoundException($"El producto {missing} no existe.");
+
+        foreach (var line in req.Items)
+        {
+            if (line.Paquetes <= 0) throw new BusinessRuleException("La cantidad de paquetes debe ser mayor a cero.");
+            if (line.UnidadesPorPaquete < 1) throw new BusinessRuleException("Las unidades por paquete deben ser al menos 1.");
+            if (line.CostoPorPaquete < 0) throw new BusinessRuleException("El costo por paquete no puede ser negativo.");
+
+            var product = products[line.ProductId];
+            purchase.Items.Add(new PurchaseItem
+            {
+                ProductId = product.Id,
+                PurchaseUnit = "paquete",
+                Quantity = line.Paquetes,
+                UnitCostSnapshot = line.CostoPorPaquete,
+                ConversionFactorSnapshot = line.UnidadesPorPaquete
+            });
+
+            product.WarehouseStock += line.Paquetes * line.UnidadesPorPaquete;
+            product.LastPurchaseCost = line.CostoPorPaquete;
+            product.UnitsPerPurchaseUnit = line.UnidadesPorPaquete;
+        }
+
+        purchase.TotalCost = purchase.Items.Sum(i => i.Subtotal);
+        await db.SaveChangesAsync(ct);
+
+        foreach (var item in purchase.Items)
+        {
+            db.StockMovements.Add(new StockMovement
+            {
+                ProductId = item.ProductId,
+                MovementType = MovementType.Purchase,
+                Location = StockLocation.Warehouse,
+                Quantity = item.QuantityInSaleUnits,
+                SourceType = "Purchase",
+                SourceId = purchase.Id,
+                OccurredAt = clock.UtcNow,
+                Notes = $"Compra #{purchase.Id} (editada)"
+            });
+        }
+        await db.SaveChangesAsync(ct);
+    }
+
+    /// <summary>
+    /// Soft-deletes a purchase and reverses its stock. Records a corrective StockMovement per
+    /// item with <c>SourceType="PurchaseDelete"</c> so the ledger explains the drop.
+    /// </summary>
+    public async Task DeleteAsync(long id, CancellationToken ct)
+    {
+        var purchase = await db.Purchases
+            .Include(p => p.Items).ThenInclude(i => i.Product)
+            .FirstOrDefaultAsync(p => p.Id == id, ct)
+            ?? throw new NotFoundException("Compra no encontrada.");
+
+        foreach (var item in purchase.Items)
+        {
+            if (item.Product is null) continue;
+            if (item.Product.WarehouseStock < item.QuantityInSaleUnits)
+                throw new BusinessRuleException(
+                    $"No se puede eliminar: ya salió inventario del producto '{item.Product.Name}' y revertir lo dejaría negativo.");
+        }
+
+        foreach (var item in purchase.Items)
+        {
+            item.Product!.WarehouseStock -= item.QuantityInSaleUnits;
+            db.StockMovements.Add(new StockMovement
+            {
+                ProductId = item.ProductId,
+                MovementType = MovementType.Adjustment,
+                Location = StockLocation.Warehouse,
+                Quantity = -item.QuantityInSaleUnits,
+                SourceType = "PurchaseDelete",
+                SourceId = purchase.Id,
+                OccurredAt = clock.UtcNow,
+                Notes = $"Reversa por eliminación de compra #{purchase.Id}"
+            });
+        }
+
+        db.Purchases.Remove(purchase); // soft-delete via interceptor
+        await db.SaveChangesAsync(ct);
     }
 }

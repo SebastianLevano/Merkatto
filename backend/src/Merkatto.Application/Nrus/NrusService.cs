@@ -10,9 +10,10 @@ public sealed class NrusService(IAppDbContext db, IDateTimeProvider clock)
         var from = new DateOnly(year, month, 1);
         var to = from.AddMonths(1).AddDays(-1);
 
+        // GrossIncome is a computed (unmapped) property — sum the persisted columns instead.
         var income = await db.DailyClosings
             .Where(c => c.BusinessDate >= from && c.BusinessDate <= to)
-            .SumAsync(c => (decimal?)c.GrossIncome, ct) ?? 0m;
+            .SumAsync(c => (decimal?)(c.CashAmount + c.YapeAmount + c.PlinAmount + c.PosAmount), ct) ?? 0m;
 
         var purchases = await db.Purchases
             .Where(p => p.Date >= from && p.Date <= to)

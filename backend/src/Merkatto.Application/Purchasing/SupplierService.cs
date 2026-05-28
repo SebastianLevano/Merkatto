@@ -44,12 +44,14 @@ public sealed class CreatePurchaseValidator : AbstractValidator<CreatePurchaseRe
     public CreatePurchaseValidator()
     {
         RuleFor(x => x.Date).NotEmpty();
+        RuleFor(x => x.SupplierName).MaximumLength(160);
         RuleFor(x => x.Items).NotEmpty();
         RuleForEach(x => x.Items).ChildRules(item =>
         {
             item.RuleFor(i => i.ProductId).GreaterThan(0);
-            item.RuleFor(i => i.Quantity).GreaterThan(0);
-            item.RuleFor(i => i.UnitCost).GreaterThanOrEqualTo(0);
+            item.RuleFor(i => i.Paquetes).GreaterThan(0);
+            item.RuleFor(i => i.UnidadesPorPaquete).GreaterThanOrEqualTo(1);
+            item.RuleFor(i => i.CostoPorPaquete).GreaterThanOrEqualTo(0);
         });
     }
 }

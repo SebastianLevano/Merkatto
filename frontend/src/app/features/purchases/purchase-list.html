@@ -21,19 +21,49 @@
         <th class="px-4 py-3 font-medium">Proveedor</th>
         <th class="px-4 py-3 text-right font-medium">Ítems</th>
         <th class="px-4 py-3 text-right font-medium">Total</th>
+        <th class="px-4 py-3 font-medium"></th>
       </tr>
     </thead>
     <tbody class="divide-y divide-slate-100">
       @for (p of purchases(); track p.id) {
-        <tr class="hover:bg-slate-50">
+        <tr (click)="openEdit(p)"
+            [class.cursor-pointer]="isAdmin()"
+            [class.hover:bg-slate-50]="isAdmin()"
+            [title]="isAdmin() ? 'Editar compra' : ''">
           <td class="px-4 py-3 text-slate-700">{{ p.date | date: 'dd/MM/yyyy' }}</td>
           <td class="px-4 py-3 text-slate-600">{{ p.supplierName ?? '—' }}</td>
           <td class="px-4 py-3 text-right text-slate-600">{{ p.itemCount }}</td>
           <td class="px-4 py-3 text-right font-medium text-slate-900">S/ {{ p.totalCost | number: '1.2-2' }}</td>
+          <td class="px-4 py-3 text-right">
+            @if (isAdmin()) {
+              <button (click)="askDelete(p, $event)" class="text-slate-400 hover:text-red-600">Eliminar</button>
+            }
+          </td>
         </tr>
       } @empty {
-        <tr><td colspan="4" class="px-4 py-10 text-center text-slate-400">{{ loading() ? 'Cargando…' : 'Sin compras registradas.' }}</td></tr>
+        <tr><td colspan="5" class="px-4 py-10 text-center text-slate-400">{{ loading() ? 'Cargando…' : 'Sin compras registradas.' }}</td></tr>
       }
     </tbody>
   </table>
 </div>
+
+<!-- Delete confirmation -->
+@if (toDelete(); as p) {
+  <div class="fixed inset-0 z-20 grid place-items-center bg-slate-900/30 p-4" (click)="cancelDelete()">
+    <div class="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl" (click)="$event.stopPropagation()">
+      <h2 class="text-lg font-semibold text-slate-900">Eliminar compra</h2>
+      <p class="mt-2 text-sm text-slate-600">
+        ¿Eliminar la compra del {{ p.date | date: 'dd/MM/yyyy' }} por <span class="font-medium text-slate-900">S/ {{ p.totalCost | number: '1.2-2' }}</span>?
+        Se va a <strong>revertir el stock</strong> que esta compra sumó al almacén. Si ya saliste el producto, te va a rechazar el borrado.
+      </p>
+      @if (error()) { <p class="mt-2 text-sm text-red-600">{{ error() }}</p> }
+      <div class="mt-6 flex justify-end gap-3">
+        <button (click)="cancelDelete()" class="rounded-lg px-4 py-2 text-sm text-slate-600 hover:bg-slate-100">Cancelar</button>
+        <button (click)="confirmDelete()" [disabled]="deleting()"
+                class="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50">
+          {{ deleting() ? 'Eliminando…' : 'Eliminar' }}
+        </button>
+      </div>
+    </div>
+  </div>
+}

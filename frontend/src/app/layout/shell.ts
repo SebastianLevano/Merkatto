@@ -29,7 +29,7 @@ export class Shell implements OnInit {
 
   protected readonly nav: NavItem[] = [
     { label: 'Dashboard',     path: '/',          icon: '◈' },
-    { label: 'Productos',     path: '/productos',  icon: '▤' },
+    { label: 'Inventario',    path: '/inventario', icon: '▤' },
     { label: 'Compras',       path: '/compras',    icon: '▦' },
     { label: 'Cierre diario', path: '/cierre',     icon: '◷' },
     { label: 'Gastos',        path: '/gastos',     icon: '▾' },

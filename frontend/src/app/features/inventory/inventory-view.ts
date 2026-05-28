@@ -1,14 +1,13 @@
 import { Component, inject, signal } from '@angular/core';
 import { DecimalPipe } from '@angular/common';
 import { FormControl, FormsModule, ReactiveFormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
 import { debounceTime, distinctUntilChanged } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { AuthService } from '../../core/auth/auth.service';
-import { ProductsService } from './products.service';
-import { BatchCountItem, ProductListItem } from './product.models';
-import { InventoryService } from '../inventory/inventory.service';
-import { ADJUSTMENT_LABEL, AdjustmentType, StockLocation } from '../inventory/inventory.models';
+import { ProductsService } from '../products/products.service';
+import { BatchCountItem, ProductListItem } from '../products/product.models';
+import { InventoryService } from './inventory.service';
+import { ADJUSTMENT_LABEL, AdjustmentType, StockLocation } from './inventory.models';
+import { SectionTabs } from './section-tabs';
 
 interface ConteoItem {
   productId: number;
@@ -20,23 +19,27 @@ interface ConteoItem {
 
 type DialogMode = 'transfer' | 'adjust' | null;
 
+/**
+ * Inventario tab: full stock view (warehouse/counter, prices, days of stock) plus the daily
+ * count and the transfer/adjust actions. Stock updates as products are added (purchases) and
+ * via the daily count.
+ */
 @Component({
-  selector: 'app-product-list',
-  imports: [ReactiveFormsModule, FormsModule, RouterLink, DecimalPipe],
-  templateUrl: './product-list.html'
+  selector: 'app-inventory-view',
+  imports: [ReactiveFormsModule, FormsModule, DecimalPipe, SectionTabs],
+  templateUrl: './inventory-view.html'
 })
-export class ProductList {
+export class InventoryView {
   private readonly service = inject(ProductsService);
   private readonly invService = inject(InventoryService);
-  private readonly auth = inject(AuthService);
 
-  protected readonly isAdmin = this.auth.isAdmin;
   protected readonly loading = signal(false);
   protected readonly products = signal<ProductListItem[]>([]);
   protected readonly total = signal(0);
   protected readonly search = new FormControl('', { nonNullable: true });
+  protected readonly lowStockOnly = signal(false);
 
-  // Inventory dialog
+  // Transfer / adjust dialog
   protected readonly StockLocation = StockLocation;
   protected readonly adjustmentTypes = Object.entries(ADJUSTMENT_LABEL).map(([v, label]) => ({
     value: Number(v) as AdjustmentType,
@@ -57,6 +60,8 @@ export class ProductList {
   protected readonly conteoSaving = signal(false);
   protected readonly conteoError = signal<string | null>(null);
   protected conteoItems: ConteoItem[] = [];
+  protected conteoDate = new Date().toISOString().slice(0, 10);
+  protected readonly today = new Date().toISOString().slice(0, 10);
 
   constructor() {
     this.search.valueChanges
@@ -67,18 +72,20 @@ export class ProductList {
 
   protected load(): void {
     this.loading.set(true);
-    this.service.list({ search: this.search.value, pageSize: 100 }).subscribe({
+    this.service.list({ search: this.search.value, activeOnly: true, pageSize: 200 }).subscribe({
       next: (res) => {
-        this.products.set(res.items);
-        this.total.set(res.total);
+        const items = this.lowStockOnly() ? res.items.filter((p) => p.isLowStock) : res.items;
+        this.products.set(items);
+        this.total.set(items.length);
         this.loading.set(false);
       },
       error: () => this.loading.set(false)
     });
   }
 
-  protected toggleActive(p: ProductListItem): void {
-    this.service.setActive(p.id, !p.isActive).subscribe(() => this.load());
+  protected toggleLowStock(): void {
+    this.lowStockOnly.update((v) => !v);
+    this.load();
   }
 
   // --- Transfer / Adjust dialogs ---
@@ -139,6 +146,7 @@ export class ProductList {
       warehouseStock: p.warehouseStock,
       counterStock: p.counterStock
     }));
+    this.conteoDate = new Date().toISOString().slice(0, 10);
     this.conteoError.set(null);
     this.conteoMode.set(true);
   }
@@ -157,7 +165,7 @@ export class ProductList {
     }));
     this.conteoSaving.set(true);
     this.conteoError.set(null);
-    this.invService.batchCount(items).subscribe({
+    this.invService.batchCount(items, this.conteoDate).subscribe({
       next: () => {
         this.conteoSaving.set(false);
         this.conteoMode.set(false);

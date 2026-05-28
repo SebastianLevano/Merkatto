@@ -31,6 +31,14 @@ export class PurchasesService {
     return this.http.post<{ id: number }>(`${this.api}/purchases`, req);
   }
 
+  update(id: number, req: CreatePurchaseRequest): Observable<void> {
+    return this.http.put<void>(`${this.api}/purchases/${id}`, req);
+  }
+
+  delete(id: number): Observable<void> {
+    return this.http.delete<void>(`${this.api}/purchases/${id}`);
+  }
+
   suppliers(): Observable<Supplier[]> {
     return this.http.get<Supplier[]>(`${this.api}/suppliers`);
   }

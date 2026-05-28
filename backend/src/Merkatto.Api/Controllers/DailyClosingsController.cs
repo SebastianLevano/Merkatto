@@ -19,6 +19,10 @@ public sealed class DailyClosingsController(DailyClosingService closings) : Cont
     public Task<DailyClosingPreview> Preview([FromQuery] DateOnly date, CancellationToken ct) =>
         closings.PreviewAsync(date, ct);
 
+    [HttpGet("by-id/{id:long}")]
+    public Task<DailyClosingDetail> GetById(long id, CancellationToken ct) =>
+        closings.GetByIdAsync(id, ct);
+
     [HttpGet("{date}")]
     public Task<DailyClosingDetail> GetByDate(DateOnly date, CancellationToken ct) =>
         closings.GetByDateAsync(date, ct);
@@ -29,5 +33,13 @@ public sealed class DailyClosingsController(DailyClosingService closings) : Cont
     {
         var id = await closings.CreateAsync(request, ct);
         return Created($"/api/v1/daily-closings/{request.BusinessDate:yyyy-MM-dd}", new { id });
+    }
+
+    [HttpPut("{id:long}")]
+    [Authorize(Policy = "Administrator")]
+    public async Task<IActionResult> Update(long id, CreateDailyClosingRequest request, CancellationToken ct)
+    {
+        await closings.UpdateAsync(id, request, ct);
+        return NoContent();
     }
 }

@@ -29,7 +29,11 @@ public record AdjustmentRequest(
 
 public record BatchCountItem(long ProductId, decimal WarehouseStock, decimal CounterStock);
 
-public record BatchCountRequest(IReadOnlyList<BatchCountItem> Items, string? Notes);
+/// <summary>
+/// Batch daily count. <see cref="Date"/> is optional (default = today) so an operator can load
+/// a count after the fact; the ledger and adjustment rows are stamped with that date.
+/// </summary>
+public record BatchCountRequest(IReadOnlyList<BatchCountItem> Items, string? Notes, DateOnly? Date);
 
 public record MovementRow(
     long Id,

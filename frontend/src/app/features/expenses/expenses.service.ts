@@ -33,6 +33,10 @@ export class ExpensesService {
     return this.http.post<{ id: number }>(`${this.api}/expenses`, req);
   }
 
+  update(id: number, req: CreateExpenseRequest): Observable<void> {
+    return this.http.put<void>(`${this.api}/expenses/${id}`, req);
+  }
+
   delete(id: number): Observable<void> {
     return this.http.delete<void>(`${this.api}/expenses/${id}`);
   }

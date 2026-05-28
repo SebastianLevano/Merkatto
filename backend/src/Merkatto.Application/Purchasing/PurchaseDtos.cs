@@ -1,9 +1,16 @@
 namespace Merkatto.Application.Purchasing;
 
-public record CreatePurchaseItemRequest(long ProductId, decimal Quantity, decimal UnitCost);
+/// <summary>One line in a purchase. Everything is in paquetes: <see cref="Paquetes"/> at
+/// <see cref="CostoPorPaquete"/> each, with <see cref="UnidadesPorPaquete"/> sale units per
+/// package. The product's cost and conversion factor are updated from these values.</summary>
+public record CreatePurchaseItemRequest(
+    long ProductId,
+    decimal Paquetes,
+    int UnidadesPorPaquete,
+    decimal CostoPorPaquete);
 
 public record CreatePurchaseRequest(
-    long? SupplierId,
+    string? SupplierName,
     DateOnly Date,
     string? Notes,
     IReadOnlyList<CreatePurchaseItemRequest> Items);

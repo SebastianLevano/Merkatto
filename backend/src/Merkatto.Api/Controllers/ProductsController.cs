@@ -12,8 +12,8 @@ public sealed class ProductsController(ProductService products) : ControllerBase
 {
     [HttpGet]
     public Task<PagedResult<ProductListItem>> List(
-        [FromQuery] PagedQuery query, [FromQuery] bool? activeOnly, CancellationToken ct) =>
-        products.GetAsync(query, activeOnly, ct);
+        [FromQuery] PagedQuery query, [FromQuery] bool? activeOnly, [FromQuery] long? categoryId, CancellationToken ct) =>
+        products.GetAsync(query, activeOnly, categoryId, ct);
 
     [HttpGet("{id:long}")]
     public Task<ProductDetail> Get(long id, CancellationToken ct) => products.GetByIdAsync(id, ct);
@@ -47,6 +47,14 @@ public sealed class ProductsController(ProductService products) : ControllerBase
     public async Task<IActionResult> Deactivate(long id, CancellationToken ct)
     {
         await products.SetActiveAsync(id, false, ct);
+        return NoContent();
+    }
+
+    [HttpDelete("{id:long}")]
+    [Authorize(Policy = "Administrator")]
+    public async Task<IActionResult> Delete(long id, CancellationToken ct)
+    {
+        await products.DeleteAsync(id, ct);
         return NoContent();
     }
 }

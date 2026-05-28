@@ -16,16 +16,33 @@ export const routes: Routes = [
         loadComponent: () => import('./features/dashboard/dashboard').then((m) => m.Dashboard)
       },
       {
+        path: 'inventario',
+        loadComponent: () => import('./features/inventory/inventory-view').then((m) => m.InventoryView)
+      },
+      {
+        path: 'inventario/productos',
+        loadComponent: () => import('./features/products/products-view').then((m) => m.ProductsView)
+      },
+      {
+        path: 'inventario/categorias',
+        loadComponent: () => import('./features/categories/category-list').then((m) => m.CategoryList)
+      },
+      {
+        path: 'inventario/movimientos',
+        loadComponent: () => import('./features/inventory/inventory-movements').then((m) => m.InventoryMovements)
+      },
+      {
+        path: 'inventario/nuevo',
+        loadComponent: () => import('./features/products/product-form').then((m) => m.ProductForm)
+      },
+      {
+        path: 'inventario/:id',
+        loadComponent: () => import('./features/products/product-form').then((m) => m.ProductForm)
+      },
+      {
         path: 'productos',
-        loadComponent: () => import('./features/products/product-list').then((m) => m.ProductList)
-      },
-      {
-        path: 'productos/nuevo',
-        loadComponent: () => import('./features/products/product-form').then((m) => m.ProductForm)
-      },
-      {
-        path: 'productos/:id',
-        loadComponent: () => import('./features/products/product-form').then((m) => m.ProductForm)
+        redirectTo: '/inventario',
+        pathMatch: 'full'
       },
       {
         path: 'compras',
@@ -36,13 +53,8 @@ export const routes: Routes = [
         loadComponent: () => import('./features/purchases/purchase-form').then((m) => m.PurchaseForm)
       },
       {
-        path: 'inventario',
-        redirectTo: '/productos',
-        pathMatch: 'full'
-      },
-      {
-        path: 'inventario/movimientos',
-        loadComponent: () => import('./features/inventory/inventory-movements').then((m) => m.InventoryMovements)
+        path: 'compras/:id',
+        loadComponent: () => import('./features/purchases/purchase-form').then((m) => m.PurchaseForm)
       },
       {
         path: 'gastos',
@@ -54,6 +66,10 @@ export const routes: Routes = [
       },
       {
         path: 'cierre/nuevo',
+        loadComponent: () => import('./features/closings/closing-form').then((m) => m.ClosingForm)
+      },
+      {
+        path: 'cierre/:id',
         loadComponent: () => import('./features/closings/closing-form').then((m) => m.ClosingForm)
       },
       {

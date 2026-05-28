@@ -19,6 +19,22 @@ public sealed class CategoriesController(CategoryBrandService service) : Control
         var id = await service.CreateCategoryAsync(request, ct);
         return Created($"/api/v1/categories/{id}", new { id });
     }
+
+    [HttpPut("{id:long}")]
+    [Authorize(Policy = "Administrator")]
+    public async Task<IActionResult> Update(long id, NameRequest request, CancellationToken ct)
+    {
+        await service.UpdateCategoryAsync(id, request, ct);
+        return NoContent();
+    }
+
+    [HttpDelete("{id:long}")]
+    [Authorize(Policy = "Administrator")]
+    public async Task<IActionResult> Delete(long id, CancellationToken ct)
+    {
+        await service.DeleteCategoryAsync(id, ct);
+        return NoContent();
+    }
 }
 
 [ApiController]

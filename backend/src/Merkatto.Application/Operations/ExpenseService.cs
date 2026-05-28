@@ -33,6 +33,13 @@ public sealed class ExpenseService(IAppDbContext db)
         return new ExpenseSummary(byType.Sum(b => b.Total), byType.OrderByDescending(b => b.Total).ToList());
     }
 
+    public async Task<ExpenseItem> GetByIdAsync(long id, CancellationToken ct)
+    {
+        var e = await db.Expenses.FirstOrDefaultAsync(x => x.Id == id, ct)
+            ?? throw new NotFoundException("Gasto no encontrado.");
+        return new ExpenseItem(e.Id, e.Date, e.Type, e.Amount, e.Description);
+    }
+
     public async Task<long> CreateAsync(CreateExpenseRequest req, CancellationToken ct)
     {
         var expense = new Expense
@@ -45,6 +52,17 @@ public sealed class ExpenseService(IAppDbContext db)
         db.Expenses.Add(expense);
         await db.SaveChangesAsync(ct);
         return expense.Id;
+    }
+
+    public async Task UpdateAsync(long id, CreateExpenseRequest req, CancellationToken ct)
+    {
+        var expense = await db.Expenses.FirstOrDefaultAsync(e => e.Id == id, ct)
+            ?? throw new NotFoundException("Gasto no encontrado.");
+        expense.Date = req.Date;
+        expense.Type = req.Type;
+        expense.Amount = req.Amount;
+        expense.Description = string.IsNullOrWhiteSpace(req.Description) ? null : req.Description.Trim();
+        await db.SaveChangesAsync(ct);
     }
 
     public async Task DeleteAsync(long id, CancellationToken ct)

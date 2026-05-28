@@ -42,27 +42,28 @@ public record ProductDetail(
     decimal MarginRate,
     bool IsActive);
 
+/// <summary>
+/// Costs and units per package come from purchases (or from the optional initial-load block).
+/// The purchase unit is always "paquete"; the form doesn't ask for it.
+/// </summary>
 public record CreateProductRequest(
     string Name,
     string? InternalCode,
     long CategoryId,
     long? BrandId,
-    string PurchaseUnit,
-    decimal LastPurchaseCost,
-    int UnitsPerPurchaseUnit,
     string SaleUnit,
     decimal SalePrice,
     decimal MinStock,
-    decimal InitialWarehouseStock);
+    // Optional "ya tengo este producto en stock" block. All three together or all empty.
+    int? InitialPaquetes,
+    int? InitialUnidadesPorPaquete,
+    decimal? InitialCostoPorPaquete);
 
 public record UpdateProductRequest(
     string Name,
     string? InternalCode,
     long CategoryId,
     long? BrandId,
-    string PurchaseUnit,
-    decimal LastPurchaseCost,
-    int UnitsPerPurchaseUnit,
     string SaleUnit,
     decimal SalePrice,
     decimal MinStock);

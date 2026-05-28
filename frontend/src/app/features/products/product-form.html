@@ -1,8 +1,13 @@
 <div class="mx-auto max-w-2xl">
-  <a routerLink="/productos" class="text-sm text-slate-500 hover:text-slate-900">← Productos</a>
+  <a routerLink="/inventario/productos" class="text-sm text-slate-500 hover:text-slate-900">← Productos</a>
   <h1 class="mt-2 text-xl font-semibold text-slate-900">
     {{ id() ? 'Editar producto' : 'Nuevo producto' }}
   </h1>
+  @if (!id()) {
+    <p class="mt-1 text-sm text-slate-500">
+      Costo y unidades por paquete se cargan después en una compra. Solo agregá los básicos aquí.
+    </p>
+  }
 
   <form [formGroup]="form" (ngSubmit)="save()" class="mt-6 space-y-6">
     <!-- Datos generales -->
@@ -18,7 +23,13 @@
           <input formControlName="internalCode" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900" />
         </label>
         <label class="block">
-          <span class="text-sm text-slate-600">Categoría</span>
+          <span class="flex items-center justify-between text-sm text-slate-600">
+            Categoría
+            <button type="button" (click)="openCategoryDialog()"
+                    class="text-xs font-medium text-slate-500 hover:text-slate-900">
+              + Nueva
+            </button>
+          </span>
           <select formControlName="categoryId" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900">
             <option [ngValue]="null" disabled>Selecciona…</option>
             @for (c of categories(); track c.id) { <option [ngValue]="c.id">{{ c.name }}</option> }
@@ -34,22 +45,10 @@
       </div>
     </section>
 
-    <!-- Compra y venta -->
+    <!-- Venta -->
     <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-      <h2 class="text-sm font-semibold text-slate-700">Compra y venta</h2>
+      <h2 class="text-sm font-semibold text-slate-700">Venta</h2>
       <div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <label class="block">
-          <span class="text-sm text-slate-600">Unidad de compra</span>
-          <input formControlName="purchaseUnit" placeholder="paquete" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900" />
-        </label>
-        <label class="block">
-          <span class="text-sm text-slate-600">Costo por unidad de compra (S/)</span>
-          <input type="number" step="0.01" formControlName="lastPurchaseCost" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900" />
-        </label>
-        <label class="block">
-          <span class="text-sm text-slate-600">Unidades por compra</span>
-          <input type="number" step="1" formControlName="unitsPerPurchaseUnit" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900" />
-        </label>
         <label class="block">
           <span class="text-sm text-slate-600">Unidad de venta</span>
           <input formControlName="saleUnit" placeholder="unidad" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900" />
@@ -58,47 +57,101 @@
           <span class="text-sm text-slate-600">Precio de venta (S/)</span>
           <input type="number" step="0.01" formControlName="salePrice" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900" />
         </label>
-      </div>
-
-      <!-- Live preview -->
-      <div class="mt-4 flex gap-6 rounded-xl bg-slate-50 px-4 py-3 text-sm">
-        <div>
-          <span class="text-slate-500">Costo unitario</span>
-          <div class="font-semibold text-slate-900">S/ {{ unitCost() | number: '1.2-2' }}</div>
-        </div>
-        <div>
-          <span class="text-slate-500">Utilidad por unidad</span>
-          <div class="font-semibold" [class.text-emerald-600]="margin() >= 0" [class.text-red-600]="margin() < 0">
-            S/ {{ margin() | number: '1.2-2' }}
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- Inventario -->
-    <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-      <h2 class="text-sm font-semibold text-slate-700">Inventario</h2>
-      <div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
         <label class="block">
           <span class="text-sm text-slate-600">Stock mínimo (alerta)</span>
           <input type="number" step="1" formControlName="minStock" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900" />
         </label>
-        @if (!id()) {
-          <label class="block">
-            <span class="text-sm text-slate-600">Stock inicial en almacén</span>
-            <input type="number" step="1" formControlName="initialWarehouseStock" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900" />
-          </label>
-        }
       </div>
     </section>
+
+    <!-- Carga inicial (solo al crear) -->
+    @if (!id()) {
+      <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <button type="button" (click)="toggleInitial()"
+                class="flex w-full items-center justify-between text-left">
+          <div>
+            <h2 class="text-sm font-semibold text-slate-700">Ya tengo este producto en stock</h2>
+            <p class="mt-0.5 text-xs text-slate-500">Opcional. Si está vacío, arranca con 0 unidades y el costo llega con la primera compra.</p>
+          </div>
+          <span class="text-lg text-slate-400">{{ initialOpen() ? '−' : '+' }}</span>
+        </button>
+
+        @if (initialOpen()) {
+          <div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <label class="block">
+              <span class="text-sm text-slate-600">Paquetes en stock</span>
+              <input type="number" step="1" min="1" formControlName="initialPaquetes"
+                     class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900" />
+            </label>
+            <label class="block">
+              <span class="text-sm text-slate-600">Unidades por paquete</span>
+              <input type="number" step="1" min="1" formControlName="initialUnidadesPorPaquete"
+                     class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900" />
+            </label>
+            <label class="block">
+              <span class="text-sm text-slate-600">Costo por paquete (S/) — opcional</span>
+              <input type="number" step="0.01" min="0" formControlName="initialCostoPorPaquete"
+                     class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900" />
+            </label>
+          </div>
+
+          <!-- Live preview -->
+          <div class="mt-4 flex flex-wrap gap-6 rounded-xl bg-slate-50 px-4 py-3 text-sm">
+            <div>
+              <span class="text-slate-500">Stock que entra</span>
+              <div class="font-semibold text-slate-900">{{ initialStockUnits() | number: '1.0-0' }} unidades</div>
+            </div>
+            <div>
+              <span class="text-slate-500">Costo unitario</span>
+              <div class="font-semibold text-slate-900">S/ {{ initialUnitCost() | number: '1.2-2' }}</div>
+            </div>
+            <div>
+              <span class="text-slate-500">Utilidad por unidad</span>
+              <div class="font-semibold" [class.text-emerald-600]="initialMargin() >= 0" [class.text-red-600]="initialMargin() < 0">
+                S/ {{ initialMargin() | number: '1.2-2' }}
+              </div>
+            </div>
+          </div>
+        }
+      </section>
+    }
 
     @if (error()) { <p class="text-sm text-red-600">{{ error() }}</p> }
 
     <div class="flex justify-end gap-3">
-      <a routerLink="/productos" class="rounded-lg px-4 py-2 text-sm text-slate-600 hover:bg-slate-100">Cancelar</a>
+      <a routerLink="/inventario/productos" class="rounded-lg px-4 py-2 text-sm text-slate-600 hover:bg-slate-100">Cancelar</a>
       <button type="submit" [disabled]="saving()" class="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50">
         {{ saving() ? 'Guardando…' : 'Guardar' }}
       </button>
     </div>
   </form>
 </div>
+
+<!-- Nueva categoría -->
+@if (categoryDialog()) {
+  <div class="fixed inset-0 z-20 grid place-items-center bg-slate-900/30 p-4" (click)="closeCategoryDialog()">
+    <div class="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl" (click)="$event.stopPropagation()">
+      <h2 class="text-lg font-semibold text-slate-900">Nueva categoría</h2>
+      <p class="mt-1 text-sm text-slate-500">Se agrega al catálogo y queda seleccionada.</p>
+      <input
+        [(ngModel)]="newCategoryName"
+        type="text"
+        maxlength="120"
+        placeholder="Nombre de la categoría"
+        (keydown.enter)="saveCategory()"
+        class="mt-4 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900 focus:ring-1 focus:ring-slate-900"
+      />
+      @if (categoryError()) { <p class="mt-2 text-sm text-red-600">{{ categoryError() }}</p> }
+      <div class="mt-5 flex justify-end gap-3">
+        <button type="button" (click)="closeCategoryDialog()"
+                class="rounded-lg px-4 py-2 text-sm text-slate-600 hover:bg-slate-100">
+          Cancelar
+        </button>
+        <button type="button" (click)="saveCategory()" [disabled]="categorySaving() || !newCategoryName.trim()"
+                class="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50">
+          {{ categorySaving() ? 'Creando…' : 'Crear' }}
+        </button>
+      </div>
+    </div>
+  </div>
+}

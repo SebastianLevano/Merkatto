@@ -1,0 +1,101 @@
+<app-section-tabs />
+
+<!-- Header -->
+<div class="mt-5 flex flex-wrap items-center justify-between gap-3">
+  <div>
+    <h1 class="text-xl font-semibold text-slate-900">Productos</h1>
+    <p class="mt-1 text-sm text-slate-500">{{ total() }} producto(s) en el catálogo</p>
+  </div>
+  @if (isAdmin()) {
+    <a routerLink="/inventario/nuevo"
+       class="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800">
+      Nuevo producto
+    </a>
+  }
+</div>
+
+<!-- Filters -->
+<div class="mt-4 flex flex-wrap items-center gap-3">
+  <input
+    [formControl]="search"
+    type="search"
+    placeholder="Buscar por nombre o código…"
+    class="w-full max-w-sm rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900 focus:ring-1 focus:ring-slate-900"
+  />
+  <select [(ngModel)]="categoryId" (ngModelChange)="onCategoryChange()"
+          class="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900">
+    <option [ngValue]="null">Todas las categorías</option>
+    @for (c of categories(); track c.id) {
+      <option [ngValue]="c.id">{{ c.name }}</option>
+    }
+  </select>
+</div>
+
+<!-- Table -->
+<div class="mt-4 overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
+  <table class="min-w-full text-sm">
+    <thead class="border-b border-slate-200 bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
+      <tr>
+        <th class="px-4 py-3 font-medium">Producto</th>
+        <th class="px-4 py-3 font-medium">Categoría</th>
+        <th class="px-4 py-3 text-right font-medium">Costo u.</th>
+        <th class="px-4 py-3 font-medium"></th>
+      </tr>
+    </thead>
+    <tbody class="divide-y divide-slate-100">
+      @for (p of products(); track p.id) {
+        <tr class="hover:bg-slate-50" [class.opacity-50]="!p.isActive">
+          <td class="px-4 py-3">
+            <div class="font-medium text-slate-900">{{ p.name }}</div>
+            @if (p.internalCode) { <div class="text-xs text-slate-400">{{ p.internalCode }}</div> }
+            @if (!p.isActive) {
+              <span class="mt-0.5 inline-block rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-500">inactivo</span>
+            }
+          </td>
+          <td class="px-4 py-3 text-slate-600">{{ p.categoryName }}</td>
+          <td class="px-4 py-3 text-right text-slate-700">S/ {{ p.unitCost | number: '1.2-2' }}</td>
+          <td class="px-4 py-3 text-right whitespace-nowrap">
+            @if (isAdmin()) {
+              <a [routerLink]="['/inventario', p.id]" class="text-slate-500 hover:text-slate-900">Editar</a>
+              <button (click)="toggleActive(p)" class="ml-3 text-slate-400 hover:text-slate-700 text-xs">
+                {{ p.isActive ? 'Desactivar' : 'Activar' }}
+              </button>
+              <button (click)="askDelete(p)" class="ml-3 text-red-500 hover:text-red-700">Eliminar</button>
+            } @else {
+              <span class="text-slate-300">—</span>
+            }
+          </td>
+        </tr>
+      } @empty {
+        <tr>
+          <td colspan="4" class="px-4 py-10 text-center text-slate-400">
+            {{ loading() ? 'Cargando…' : 'Sin productos.' }}
+          </td>
+        </tr>
+      }
+    </tbody>
+  </table>
+</div>
+
+<!-- Delete confirmation -->
+@if (toDelete(); as p) {
+  <div class="fixed inset-0 z-20 grid place-items-center bg-slate-900/30 p-4" (click)="cancelDelete()">
+    <div class="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl" (click)="$event.stopPropagation()">
+      <h2 class="text-lg font-semibold text-slate-900">Eliminar producto</h2>
+      <p class="mt-2 text-sm text-slate-600">
+        ¿Eliminar <span class="font-medium text-slate-900">{{ p.name }}</span>? Saldrá del catálogo y
+        del inventario. El historial de compras y movimientos se conserva.
+      </p>
+      @if (error()) { <p class="mt-2 text-sm text-red-600">{{ error() }}</p> }
+      <div class="mt-6 flex justify-end gap-3">
+        <button (click)="cancelDelete()" class="rounded-lg px-4 py-2 text-sm text-slate-600 hover:bg-slate-100">
+          Cancelar
+        </button>
+        <button (click)="confirmDelete()" [disabled]="deleting()"
+                class="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50">
+          {{ deleting() ? 'Eliminando…' : 'Eliminar' }}
+        </button>
+      </div>
+    </div>
+  </div>
+}

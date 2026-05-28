@@ -1,6 +1,7 @@
 using Merkatto.Application.Auth;
 using Merkatto.Application.Common;
 using Merkatto.Domain.Auth;
+using Merkatto.Domain.Catalog;
 using Merkatto.Domain.Common;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -23,6 +24,7 @@ public sealed class DbInitializer(
         await db.Database.MigrateAsync(ct);
 
         await SeedBusinessNameAsync(ct);
+        await SeedDefaultCategoriesAsync(ct);
 
         if (await db.Users.AnyAsync(ct))
             return;
@@ -45,6 +47,27 @@ public sealed class DbInitializer(
         });
         await db.SaveChangesAsync(ct);
         logger.LogInformation("Seeded administrator {Email}.", seed.AdminEmail);
+    }
+
+    /// <summary>
+    /// Seeds a reasonable starter set of categories so a fresh install isn't blocked from creating
+    /// products. Skips if any category already exists — operators can add/edit from the UI.
+    /// </summary>
+    private async Task SeedDefaultCategoriesAsync(CancellationToken ct)
+    {
+        if (await db.Categories.AnyAsync(ct)) return;
+
+        string[] defaults =
+        [
+            "Abarrotes", "Bebidas", "Lácteos", "Panadería", "Golosinas", "Limpieza",
+            "Higiene personal", "Cigarrillos", "Embutidos", "Congelados", "Snacks", "Otros"
+        ];
+
+        foreach (var name in defaults)
+            db.Categories.Add(new Category { Name = name });
+
+        await db.SaveChangesAsync(ct);
+        logger.LogInformation("Seeded {Count} default categories.", defaults.Length);
     }
 
     private async Task SeedBusinessNameAsync(CancellationToken ct)

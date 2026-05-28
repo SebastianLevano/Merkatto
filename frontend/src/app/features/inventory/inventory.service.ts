@@ -39,7 +39,11 @@ export class InventoryService {
     return this.http.post<void>(`${this.api}/inventory/adjustments`, req);
   }
 
-  batchCount(items: BatchCountItem[], notes?: string): Observable<void> {
-    return this.http.post<void>(`${this.api}/inventory/batch-count`, { items, notes: notes ?? null });
+  batchCount(items: BatchCountItem[], date?: string | null, notes?: string): Observable<void> {
+    return this.http.post<void>(`${this.api}/inventory/batch-count`, {
+      items,
+      notes: notes ?? null,
+      date: date ?? null
+    });
   }
 }

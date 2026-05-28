@@ -1,16 +1,23 @@
-<div class="mx-auto max-w-3xl">
+<div class="mx-auto max-w-4xl">
   <a routerLink="/compras" class="text-sm text-slate-500 hover:text-slate-900">← Compras</a>
-  <h1 class="mt-2 text-xl font-semibold text-slate-900">Registrar compra</h1>
+  <h1 class="mt-2 text-xl font-semibold text-slate-900">{{ id() ? 'Editar compra' : 'Registrar compra' }}</h1>
 
   <form [formGroup]="form" (ngSubmit)="save()" class="mt-6 space-y-6">
     <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
       <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <label class="block">
           <span class="text-sm text-slate-600">Proveedor (opcional)</span>
-          <select formControlName="supplierId" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900">
-            <option [ngValue]="null">—</option>
-            @for (s of suppliers(); track s.id) { <option [ngValue]="s.id">{{ s.name }}</option> }
-          </select>
+          <input
+            type="text"
+            list="suppliers-list"
+            formControlName="supplierName"
+            placeholder="Escribí el nombre…"
+            maxlength="160"
+            class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+          />
+          <datalist id="suppliers-list">
+            @for (s of suppliers(); track s.id) { <option [value]="s.name"></option> }
+          </datalist>
         </label>
         <label class="block">
           <span class="text-sm text-slate-600">Fecha</span>
@@ -25,34 +32,39 @@
 
     <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
       <div class="flex items-center justify-between">
-        <h2 class="text-sm font-semibold text-slate-700">Productos comprados</h2>
+        <h2 class="text-sm font-semibold text-slate-700">Productos comprados (todo por paquete)</h2>
         <button type="button" (click)="addItem()" class="text-sm text-slate-600 hover:text-slate-900">+ Agregar línea</button>
       </div>
 
       <div class="mt-4 space-y-3" formArrayName="items">
         @for (item of items.controls; track $index) {
           <div [formGroupName]="$index" class="grid grid-cols-12 items-end gap-3">
-            <label class="col-span-5">
+            <label class="col-span-12 sm:col-span-4">
               <span class="text-xs text-slate-500">Producto</span>
               <select formControlName="productId" class="mt-1 w-full rounded-lg border border-slate-300 px-2 py-2 text-sm outline-none focus:border-slate-900">
                 <option [ngValue]="null" disabled>Selecciona…</option>
                 @for (p of products(); track p.id) {
-                  <option [ngValue]="p.id">{{ p.name }} ({{ p.saleUnit }})</option>
+                  <option [ngValue]="p.id">{{ p.name }}</option>
                 }
               </select>
             </label>
-            <label class="col-span-2">
-              <span class="text-xs text-slate-500">Cantidad</span>
-              <input type="number" step="1" formControlName="quantity" class="mt-1 w-full rounded-lg border border-slate-300 px-2 py-2 text-sm outline-none focus:border-slate-900" />
+            <label class="col-span-4 sm:col-span-2">
+              <span class="text-xs text-slate-500">Paquetes</span>
+              <input type="number" step="1" min="1" formControlName="paquetes" class="mt-1 w-full rounded-lg border border-slate-300 px-2 py-2 text-sm outline-none focus:border-slate-900" />
             </label>
-            <label class="col-span-2">
-              <span class="text-xs text-slate-500">Costo unit. (S/)</span>
-              <input type="number" step="0.01" formControlName="unitCost" class="mt-1 w-full rounded-lg border border-slate-300 px-2 py-2 text-sm outline-none focus:border-slate-900" />
+            <label class="col-span-4 sm:col-span-2">
+              <span class="text-xs text-slate-500">Unid. / paquete</span>
+              <input type="number" step="1" min="1" formControlName="unidadesPorPaquete" class="mt-1 w-full rounded-lg border border-slate-300 px-2 py-2 text-sm outline-none focus:border-slate-900" />
             </label>
-            <div class="col-span-2 pb-2 text-right text-sm font-medium text-slate-900">
-              S/ {{ lineSubtotal(item) | number: '1.2-2' }}
+            <label class="col-span-4 sm:col-span-2">
+              <span class="text-xs text-slate-500">Costo / paquete (S/)</span>
+              <input type="number" step="0.01" min="0" formControlName="costoPorPaquete" class="mt-1 w-full rounded-lg border border-slate-300 px-2 py-2 text-sm outline-none focus:border-slate-900" />
+            </label>
+            <div class="col-span-10 sm:col-span-1 pb-2 text-right text-sm">
+              <div class="font-medium text-slate-900">S/ {{ lineSubtotal(item) | number: '1.2-2' }}</div>
+              <div class="text-xs text-slate-400">+{{ lineUnits(item) | number: '1.0-0' }} u</div>
             </div>
-            <div class="col-span-1 pb-1 text-right">
+            <div class="col-span-2 sm:col-span-1 pb-1 text-right">
               <button type="button" (click)="removeItem($index)" class="text-slate-400 hover:text-red-600" title="Quitar">✕</button>
             </div>
           </div>
@@ -72,7 +84,7 @@
     <div class="flex justify-end gap-3">
       <a routerLink="/compras" class="rounded-lg px-4 py-2 text-sm text-slate-600 hover:bg-slate-100">Cancelar</a>
       <button type="submit" [disabled]="saving()" class="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50">
-        {{ saving() ? 'Guardando…' : 'Registrar compra' }}
+        {{ saving() ? 'Guardando…' : (id() ? 'Guardar cambios' : 'Registrar compra') }}
       </button>
     </div>
   </form>

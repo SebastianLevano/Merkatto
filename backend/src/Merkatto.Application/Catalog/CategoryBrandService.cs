@@ -38,6 +38,31 @@ public sealed class CategoryBrandService(IAppDbContext db)
         return category.Id;
     }
 
+    public async Task UpdateCategoryAsync(long id, NameRequest req, CancellationToken ct)
+    {
+        var category = await db.Categories.FirstOrDefaultAsync(c => c.Id == id, ct)
+            ?? throw new NotFoundException("Categoría no encontrada.");
+        var name = req.Name.Trim();
+        if (await db.Categories.AnyAsync(c => c.Id != id && c.Name.ToLower() == name.ToLower(), ct))
+            throw new ConflictException("Ya existe otra categoría con ese nombre.");
+        category.Name = name;
+        await db.SaveChangesAsync(ct);
+    }
+
+    /// <summary>
+    /// Soft-deletes a category. Rejected if any product still uses it — the operator must
+    /// move those products to another category first.
+    /// </summary>
+    public async Task DeleteCategoryAsync(long id, CancellationToken ct)
+    {
+        var category = await db.Categories.FirstOrDefaultAsync(c => c.Id == id, ct)
+            ?? throw new NotFoundException("Categoría no encontrada.");
+        var inUse = await db.Products.AnyAsync(p => p.CategoryId == id, ct);
+        if (inUse) throw new BusinessRuleException("La categoría tiene productos asignados. Reasígnalos antes de eliminar.");
+        db.Categories.Remove(category);
+        await db.SaveChangesAsync(ct);
+    }
+
     public async Task<long> CreateBrandAsync(NameRequest req, CancellationToken ct)
     {
         var name = req.Name.Trim();

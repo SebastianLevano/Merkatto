@@ -7,11 +7,13 @@ namespace Merkatto.Application.Catalog;
 
 public sealed class ProductService(IAppDbContext db, IDateTimeProvider clock)
 {
-    public async Task<PagedResult<ProductListItem>> GetAsync(PagedQuery query, bool? activeOnly, CancellationToken ct)
+    public async Task<PagedResult<ProductListItem>> GetAsync(PagedQuery query, bool? activeOnly, long? categoryId, CancellationToken ct)
     {
         var q = db.Products.Include(p => p.Category).Include(p => p.Brand).AsQueryable();
 
         if (activeOnly == true) q = q.Where(p => p.IsActive);
+
+        if (categoryId is { } catId) q = q.Where(p => p.CategoryId == catId);
 
         if (!string.IsNullOrWhiteSpace(query.Search))
         {
@@ -59,36 +61,42 @@ public sealed class ProductService(IAppDbContext db, IDateTimeProvider clock)
         await EnsureCategoryExists(req.CategoryId, ct);
         await EnsureBrandExists(req.BrandId, ct);
 
+        // Initial-load block is all-or-nothing (the validator enforces both fields when any is set).
+        var hasInitial = req.InitialPaquetes is > 0 && req.InitialUnidadesPorPaquete is >= 1;
+        var unidadesPorPaquete = hasInitial ? req.InitialUnidadesPorPaquete!.Value : 1;
+        var costoPorPaquete = hasInitial ? (req.InitialCostoPorPaquete ?? 0m) : 0m;
+        var initialStockInUnits = hasInitial ? req.InitialPaquetes!.Value * unidadesPorPaquete : 0m;
+
         var product = new Product
         {
             Name = req.Name.Trim(),
             InternalCode = Normalize(req.InternalCode),
             CategoryId = req.CategoryId,
             BrandId = req.BrandId,
-            PurchaseUnit = req.PurchaseUnit.Trim(),
-            LastPurchaseCost = req.LastPurchaseCost,
-            UnitsPerPurchaseUnit = req.UnitsPerPurchaseUnit,
+            PurchaseUnit = "paquete", // hardcoded; only "paquete" is supported as the purchase unit.
+            LastPurchaseCost = costoPorPaquete,
+            UnitsPerPurchaseUnit = unidadesPorPaquete,
             SaleUnit = req.SaleUnit.Trim(),
             SalePrice = req.SalePrice,
             MinStock = req.MinStock,
-            WarehouseStock = req.InitialWarehouseStock,
+            WarehouseStock = initialStockInUnits,
             IsActive = true
         };
         db.Products.Add(product);
         await db.SaveChangesAsync(ct);
 
-        if (req.InitialWarehouseStock > 0)
+        if (hasInitial && initialStockInUnits > 0)
         {
             db.StockMovements.Add(new StockMovement
             {
                 ProductId = product.Id,
                 MovementType = MovementType.Adjustment,
                 Location = StockLocation.Warehouse,
-                Quantity = req.InitialWarehouseStock,
-                SourceType = "ProductCreate",
+                Quantity = initialStockInUnits,
+                SourceType = "InitialStock",
                 SourceId = product.Id,
                 OccurredAt = clock.UtcNow,
-                Notes = "Stock inicial"
+                Notes = $"Carga inicial: {req.InitialPaquetes} paquete(s) × {unidadesPorPaquete}"
             });
             await db.SaveChangesAsync(ct);
         }
@@ -104,13 +112,11 @@ public sealed class ProductService(IAppDbContext db, IDateTimeProvider clock)
         await EnsureCategoryExists(req.CategoryId, ct);
         await EnsureBrandExists(req.BrandId, ct);
 
+        // Cost and units-per-package are not updated here — they come from purchases.
         product.Name = req.Name.Trim();
         product.InternalCode = Normalize(req.InternalCode);
         product.CategoryId = req.CategoryId;
         product.BrandId = req.BrandId;
-        product.PurchaseUnit = req.PurchaseUnit.Trim();
-        product.LastPurchaseCost = req.LastPurchaseCost;
-        product.UnitsPerPurchaseUnit = req.UnitsPerPurchaseUnit;
         product.SaleUnit = req.SaleUnit.Trim();
         product.SalePrice = req.SalePrice;
         product.MinStock = req.MinStock;
@@ -123,6 +129,19 @@ public sealed class ProductService(IAppDbContext db, IDateTimeProvider clock)
         var product = await db.Products.FirstOrDefaultAsync(p => p.Id == id, ct)
             ?? throw new NotFoundException("Producto no encontrado.");
         product.IsActive = active;
+        await db.SaveChangesAsync(ct);
+    }
+
+    /// <summary>
+    /// Soft-deletes the product (hidden from queries, recoverable in DB; purchase and stock
+    /// history that references it stays intact). The AuditingInterceptor turns the Remove into
+    /// a soft delete.
+    /// </summary>
+    public async Task DeleteAsync(long id, CancellationToken ct)
+    {
+        var product = await db.Products.FirstOrDefaultAsync(p => p.Id == id, ct)
+            ?? throw new NotFoundException("Producto no encontrado.");
+        db.Products.Remove(product);
         await db.SaveChangesAsync(ct);
     }
 

@@ -33,12 +33,13 @@ export interface PurchaseDetail {
 
 export interface CreatePurchaseItemRequest {
   productId: number;
-  quantity: number;
-  unitCost: number;
+  paquetes: number;
+  unidadesPorPaquete: number;
+  costoPorPaquete: number;
 }
 
 export interface CreatePurchaseRequest {
-  supplierId: number | null;
+  supplierName: string | null;
   date: string;
   notes: string | null;
   items: CreatePurchaseItemRequest[];

@@ -16,7 +16,7 @@ export class ProductsService {
   private readonly http = inject(HttpClient);
   private readonly api = environment.apiUrl;
 
-  list(opts: { search?: string; page?: number; pageSize?: number; activeOnly?: boolean } = {}): Observable<
+  list(opts: { search?: string; page?: number; pageSize?: number; activeOnly?: boolean; categoryId?: number } = {}): Observable<
     PagedResult<ProductListItem>
   > {
     let params = new HttpParams();
@@ -24,6 +24,7 @@ export class ProductsService {
     if (opts.page) params = params.set('page', opts.page);
     if (opts.pageSize) params = params.set('pageSize', opts.pageSize);
     if (opts.activeOnly != null) params = params.set('activeOnly', opts.activeOnly);
+    if (opts.categoryId != null) params = params.set('categoryId', opts.categoryId);
     return this.http.get<PagedResult<ProductListItem>>(`${this.api}/products`, { params });
   }
 
@@ -44,6 +45,10 @@ export class ProductsService {
     return this.http.post<void>(`${this.api}/products/${id}/${action}`, {});
   }
 
+  delete(id: number): Observable<void> {
+    return this.http.delete<void>(`${this.api}/products/${id}`);
+  }
+
   categories(): Observable<LookupItem[]> {
     return this.http.get<LookupItem[]>(`${this.api}/categories`);
   }
@@ -54,5 +59,13 @@ export class ProductsService {
 
   createCategory(name: string): Observable<{ id: number }> {
     return this.http.post<{ id: number }>(`${this.api}/categories`, { name });
+  }
+
+  updateCategory(id: number, name: string): Observable<void> {
+    return this.http.put<void>(`${this.api}/categories/${id}`, { name });
+  }
+
+  deleteCategory(id: number): Observable<void> {
+    return this.http.delete<void>(`${this.api}/categories/${id}`);
   }
 }

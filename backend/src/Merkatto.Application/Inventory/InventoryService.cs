@@ -129,8 +129,11 @@ public sealed class InventoryService(IAppDbContext db, IDateTimeProvider clock)
         var products = await db.Products.Where(p => productIds.Contains(p.Id)).ToListAsync(ct);
         var map = products.ToDictionary(p => p.Id);
 
-        var now = clock.UtcNow;
-        var today = clock.Today;
+        // The count is "as of" a specific business date — default today. Don't allow future dates.
+        var countDate = req.Date ?? clock.Today;
+        if (countDate > clock.Today) countDate = clock.Today;
+        // Stamp the ledger at noon UTC of the count's business date; close enough for ordering.
+        var occurredAt = new DateTimeOffset(countDate.ToDateTime(new TimeOnly(12, 0)), TimeSpan.Zero);
         var notes = string.IsNullOrWhiteSpace(req.Notes) ? "Conteo diario" : req.Notes.Trim();
         var pending = new List<(InventoryAdjustment Adj, long ProductId, StockLocation Location, decimal Delta)>();
 
@@ -148,7 +151,7 @@ public sealed class InventoryService(IAppDbContext db, IDateTimeProvider clock)
                 var adj = new InventoryAdjustment
                 {
                     ProductId = product.Id, Type = AdjustmentType.Correction,
-                    Location = StockLocation.Warehouse, Quantity = wd, Reason = notes, Date = today
+                    Location = StockLocation.Warehouse, Quantity = wd, Reason = notes, Date = countDate
                 };
                 db.InventoryAdjustments.Add(adj);
                 pending.Add((adj, product.Id, StockLocation.Warehouse, wd));
@@ -160,7 +163,7 @@ public sealed class InventoryService(IAppDbContext db, IDateTimeProvider clock)
                 var adj = new InventoryAdjustment
                 {
                     ProductId = product.Id, Type = AdjustmentType.Correction,
-                    Location = StockLocation.Counter, Quantity = cd, Reason = notes, Date = today
+                    Location = StockLocation.Counter, Quantity = cd, Reason = notes, Date = countDate
                 };
                 db.InventoryAdjustments.Add(adj);
                 pending.Add((adj, product.Id, StockLocation.Counter, cd));
@@ -174,7 +177,7 @@ public sealed class InventoryService(IAppDbContext db, IDateTimeProvider clock)
             {
                 ProductId = productId, MovementType = MovementType.Adjustment,
                 Location = location, Quantity = delta, SourceType = "BatchCount",
-                SourceId = adj.Id, OccurredAt = now, Notes = notes
+                SourceId = adj.Id, OccurredAt = occurredAt, Notes = notes
             });
 
         if (pending.Count > 0) await db.SaveChangesAsync(ct);

@@ -39,7 +39,12 @@
     </thead>
     <tbody class="divide-y divide-slate-100">
       @for (c of closings(); track c.id) {
-        <tr class="hover:bg-slate-50">
+        <tr
+          (click)="openEdit(c)"
+          [class.cursor-pointer]="canEdit(c)"
+          [class.hover:bg-slate-50]="canEdit(c)"
+          [title]="canEdit(c) ? 'Editar cierre' : 'Solo los cierres de los últimos 7 días son editables (admin)'"
+        >
           <td class="px-4 py-3 text-slate-700">{{ c.businessDate | date: 'EEEE dd/MM/yyyy' }}</td>
           <td class="px-4 py-3 text-right text-slate-900">S/ {{ c.grossIncome | number: '1.2-2' }}</td>
           <td class="px-4 py-3 text-right font-medium" [class.text-emerald-600]="c.netFlow >= 0" [class.text-red-600]="c.netFlow < 0">

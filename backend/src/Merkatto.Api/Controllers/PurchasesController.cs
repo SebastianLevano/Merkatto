@@ -24,6 +24,22 @@ public sealed class PurchasesController(PurchaseService purchases) : ControllerB
         var id = await purchases.CreateAsync(request, ct);
         return CreatedAtAction(nameof(Get), new { id }, new { id });
     }
+
+    [HttpPut("{id:long}")]
+    [Authorize(Policy = "Administrator")]
+    public async Task<IActionResult> Update(long id, CreatePurchaseRequest request, CancellationToken ct)
+    {
+        await purchases.UpdateAsync(id, request, ct);
+        return NoContent();
+    }
+
+    [HttpDelete("{id:long}")]
+    [Authorize(Policy = "Administrator")]
+    public async Task<IActionResult> Delete(long id, CancellationToken ct)
+    {
+        await purchases.DeleteAsync(id, ct);
+        return NoContent();
+    }
 }
 
 [ApiController]

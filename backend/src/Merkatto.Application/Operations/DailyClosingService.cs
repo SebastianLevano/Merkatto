@@ -38,6 +38,13 @@ public sealed class DailyClosingService(IAppDbContext db, IDateTimeProvider cloc
         return ToDetail(c);
     }
 
+    public async Task<DailyClosingDetail> GetByIdAsync(long id, CancellationToken ct)
+    {
+        var c = await db.DailyClosings.FirstOrDefaultAsync(x => x.Id == id, ct)
+            ?? throw new NotFoundException("Cierre no encontrado.");
+        return ToDetail(c);
+    }
+
     public async Task<DailyClosingPreview> PreviewAsync(DateOnly date, CancellationToken ct)
     {
         var expenses = await db.Expenses.Where(e => e.Date == date).SumAsync(e => (decimal?)e.Amount, ct) ?? 0m;
@@ -71,6 +78,36 @@ public sealed class DailyClosingService(IAppDbContext db, IDateTimeProvider cloc
         db.DailyClosings.Add(closing);
         await db.SaveChangesAsync(ct);
         return closing.Id;
+    }
+
+    /// <summary>
+    /// Updates an existing closing. Only allowed within the last 7 days (relative to today's
+    /// business date) to keep older reports stable. Admin-only at the controller layer.
+    /// </summary>
+    public async Task UpdateAsync(long id, CreateDailyClosingRequest req, CancellationToken ct)
+    {
+        var closing = await db.DailyClosings.FirstOrDefaultAsync(c => c.Id == id, ct)
+            ?? throw new NotFoundException("Cierre no encontrado.");
+
+        var daysAgo = clock.Today.DayNumber - closing.BusinessDate.DayNumber;
+        if (daysAgo > 7)
+            throw new BusinessRuleException("Solo se pueden editar cierres de los últimos 7 días.");
+
+        // Refresh totalExpenses in case expenses changed since the closing was created.
+        var totalExpenses = await db.Expenses
+            .Where(e => e.Date == closing.BusinessDate).SumAsync(e => (decimal?)e.Amount, ct) ?? 0m;
+
+        closing.CashAmount = req.CashAmount;
+        closing.YapeAmount = req.YapeAmount;
+        closing.PlinAmount = req.PlinAmount;
+        closing.PosAmount = req.PosAmount;
+        closing.PosCommissionRate = req.PosCommissionRate;
+        closing.QuickPurchases = req.QuickPurchases;
+        closing.TotalExpenses = totalExpenses;
+        closing.Notes = string.IsNullOrWhiteSpace(req.Notes) ? null : req.Notes.Trim();
+        closing.EstimatedProfit = await EstimateProfitAsync(closing.GrossIncome, ct);
+
+        await db.SaveChangesAsync(ct);
     }
 
     /// <summary>Referential profit estimate: gross income × average product margin rate.</summary>

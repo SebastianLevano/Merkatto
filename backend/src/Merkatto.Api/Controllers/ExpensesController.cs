@@ -22,12 +22,23 @@ public sealed class ExpensesController(ExpenseService expenses) : ControllerBase
         [FromQuery] DateOnly? from, [FromQuery] DateOnly? to, CancellationToken ct) =>
         expenses.GetSummaryAsync(from, to, ct);
 
+    [HttpGet("{id:long}")]
+    public Task<ExpenseItem> Get(long id, CancellationToken ct) => expenses.GetByIdAsync(id, ct);
+
     [HttpPost]
     [Authorize(Policy = "Collaborator")]
     public async Task<ActionResult> Create(CreateExpenseRequest request, CancellationToken ct)
     {
         var id = await expenses.CreateAsync(request, ct);
         return Created($"/api/v1/expenses/{id}", new { id });
+    }
+
+    [HttpPut("{id:long}")]
+    [Authorize(Policy = "Administrator")]
+    public async Task<IActionResult> Update(long id, CreateExpenseRequest request, CancellationToken ct)
+    {
+        await expenses.UpdateAsync(id, request, ct);
+        return NoContent();
     }
 
     [HttpDelete("{id:long}")]

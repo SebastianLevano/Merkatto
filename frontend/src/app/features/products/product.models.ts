@@ -53,16 +53,19 @@ export interface CreateProductRequest {
   internalCode: string | null;
   categoryId: number;
   brandId: number | null;
-  purchaseUnit: string;
-  lastPurchaseCost: number;
-  unitsPerPurchaseUnit: number;
   saleUnit: string;
   salePrice: number;
   minStock: number;
-  initialWarehouseStock: number;
+  // Optional "ya tengo este producto en stock" block.
+  initialPaquetes: number | null;
+  initialUnidadesPorPaquete: number | null;
+  initialCostoPorPaquete: number | null;
 }
 
-export type UpdateProductRequest = Omit<CreateProductRequest, 'initialWarehouseStock'>;
+export type UpdateProductRequest = Omit<
+  CreateProductRequest,
+  'initialPaquetes' | 'initialUnidadesPorPaquete' | 'initialCostoPorPaquete'
+>;
 
 export interface LookupItem {
   id: number;
