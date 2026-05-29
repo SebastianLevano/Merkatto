@@ -36,6 +36,7 @@ export class Shell implements OnInit {
     { label: 'Fiados',        path: '/fiados',     icon: '☷' },
     { label: 'Alertas',       path: '/alertas',    icon: '⚑', badge: () => this.alertCount() },
     { label: 'NRUS',          path: '/nrus',       icon: '₲' },
+    { label: 'Reportes',      path: '/reportes',   icon: '⬇' },
     { label: 'Actividad',     path: '/timeline',   icon: '◎' },
     { label: 'Configuración', path: '/configuracion', icon: '⚙' }
   ];

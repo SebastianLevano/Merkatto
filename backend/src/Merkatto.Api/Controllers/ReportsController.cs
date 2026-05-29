@@ -26,4 +26,13 @@ public sealed class ReportsController(IReportService reports) : ControllerBase
         var filename = $"gastos_{year ?? today.Year}_{(month ?? today.Month):D2}.xlsx";
         return File(xlsx, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", filename);
     }
+
+    [HttpGet("purchases")]
+    public async Task<IActionResult> Purchases([FromQuery] int? year, [FromQuery] int? month, CancellationToken ct)
+    {
+        var today = DateTime.UtcNow;
+        var xlsx = await reports.PurchasesExcelAsync(year ?? today.Year, month ?? today.Month, ct);
+        var filename = $"compras_{year ?? today.Year}_{(month ?? today.Month):D2}.xlsx";
+        return File(xlsx, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", filename);
+    }
 }

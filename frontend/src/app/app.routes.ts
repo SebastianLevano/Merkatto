@@ -101,6 +101,10 @@ export const routes: Routes = [
         loadComponent: () => import('./features/timeline/timeline').then((m) => m.Timeline)
       },
       {
+        path: 'reportes',
+        loadComponent: () => import('./features/reports/reports').then((m) => m.Reports)
+      },
+      {
         path: 'configuracion',
         loadComponent: () => import('./features/settings/settings').then((m) => m.Settings)
       }

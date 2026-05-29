@@ -21,6 +21,13 @@ export class ReportsService {
       .subscribe((blob) => this.triggerDownload(blob, `gastos-${year}-${String(month).padStart(2, '0')}.xlsx`));
   }
 
+  downloadPurchasesExcel(year: number, month: number): void {
+    const params = new HttpParams().set('year', year).set('month', month);
+    this.http
+      .get(`${this.api}/reports/purchases`, { params, responseType: 'blob' })
+      .subscribe((blob) => this.triggerDownload(blob, `compras-${year}-${String(month).padStart(2, '0')}.xlsx`));
+  }
+
   private triggerDownload(blob: Blob, filename: string): void {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');

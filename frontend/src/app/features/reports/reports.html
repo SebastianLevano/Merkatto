@@ -1,0 +1,88 @@
+<div>
+  <h1 class="text-xl font-semibold text-slate-900">Reportes</h1>
+  <p class="mt-1 text-sm text-slate-500">Descargá reportes mensuales en PDF o Excel.</p>
+</div>
+
+<!-- Period selector -->
+<div class="mt-6 flex flex-wrap items-end gap-4">
+  <label class="block">
+    <span class="text-sm text-slate-600">Mes</span>
+    <select [(ngModel)]="month"
+            class="mt-1 block rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900">
+      @for (m of months; track m.value) {
+        <option [value]="m.value">{{ m.label }}</option>
+      }
+    </select>
+  </label>
+  <label class="block">
+    <span class="text-sm text-slate-600">Año</span>
+    <select [(ngModel)]="year"
+            class="mt-1 block rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900">
+      @for (y of years; track y) {
+        <option [value]="y">{{ y }}</option>
+      }
+    </select>
+  </label>
+</div>
+
+<!-- Report cards -->
+<div class="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+
+  <!-- Cierres PDF -->
+  <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+    <div class="flex items-start gap-3">
+      <span class="text-2xl">📄</span>
+      <div class="flex-1">
+        <h2 class="font-semibold text-slate-900">Cierres del mes</h2>
+        <p class="mt-1 text-sm text-slate-500">
+          Resumen de ingresos, gastos, flujo neto y utilidad estimada día por día.
+        </p>
+        <p class="mt-1 text-xs text-slate-400">Formato: PDF</p>
+      </div>
+    </div>
+    <button (click)="download('closings-pdf')"
+            [disabled]="!!downloading()"
+            class="mt-4 w-full rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50">
+      {{ downloading() === 'closings-pdf' ? 'Descargando…' : 'Descargar PDF' }}
+    </button>
+  </div>
+
+  <!-- Gastos Excel -->
+  <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+    <div class="flex items-start gap-3">
+      <span class="text-2xl">📊</span>
+      <div class="flex-1">
+        <h2 class="font-semibold text-slate-900">Gastos del mes</h2>
+        <p class="mt-1 text-sm text-slate-500">
+          Detalle de todos los gastos del período con tipo, descripción y monto.
+        </p>
+        <p class="mt-1 text-xs text-slate-400">Formato: Excel (.xlsx)</p>
+      </div>
+    </div>
+    <button (click)="download('expenses-excel')"
+            [disabled]="!!downloading()"
+            class="mt-4 w-full rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50">
+      {{ downloading() === 'expenses-excel' ? 'Descargando…' : 'Descargar Excel' }}
+    </button>
+  </div>
+
+  <!-- Compras Excel -->
+  <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+    <div class="flex items-start gap-3">
+      <span class="text-2xl">🛒</span>
+      <div class="flex-1">
+        <h2 class="font-semibold text-slate-900">Compras del mes</h2>
+        <p class="mt-1 text-sm text-slate-500">
+          Listado de compras por proveedor con productos, paquetes, costo y subtotal.
+        </p>
+        <p class="mt-1 text-xs text-slate-400">Formato: Excel (.xlsx)</p>
+      </div>
+    </div>
+    <button (click)="download('purchases-excel')"
+            [disabled]="!!downloading()"
+            class="mt-4 w-full rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50">
+      {{ downloading() === 'purchases-excel' ? 'Descargando…' : 'Descargar Excel' }}
+    </button>
+  </div>
+
+</div>

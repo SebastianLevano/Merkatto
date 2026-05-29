@@ -197,4 +197,72 @@ public sealed class ReportService(IAppDbContext db) : IReportService
         ExpenseType.Otros => "Otros",
         _ => type.ToString()
     };
+
+    // ── Excel: compras del mes ──────────────────────────────────────────────
+
+    public async Task<byte[]> PurchasesExcelAsync(int year, int month, CancellationToken ct)
+    {
+        var from = new DateOnly(year, month, 1);
+        var to = from.AddMonths(1).AddDays(-1);
+        var monthName = new System.Globalization.CultureInfo("es-PE").DateTimeFormat.GetMonthName(month);
+
+        var purchases = await db.Purchases
+            .Include(p => p.Supplier)
+            .Include(p => p.Items).ThenInclude(i => i.Product)
+            .Where(p => p.Date >= from && p.Date <= to)
+            .OrderBy(p => p.Date).ThenBy(p => p.Id)
+            .ToListAsync(ct);
+
+        using var wb = new XLWorkbook();
+        var ws = wb.Worksheets.Add($"Compras {monthName} {year}");
+
+        ws.Cell(1, 1).Value = $"Merkatto — Compras de {monthName} {year}";
+        ws.Cell(1, 1).Style.Font.Bold = true;
+        ws.Cell(1, 1).Style.Font.FontSize = 14;
+        ws.Range(1, 1, 1, 6).Merge();
+
+        var headers = new[] { "Fecha", "Proveedor", "Producto", "Paquetes", "Costo/paq (S/)", "Subtotal (S/)" };
+        for (var i = 0; i < headers.Length; i++)
+        {
+            var cell = ws.Cell(3, i + 1);
+            cell.Value = headers[i];
+            cell.Style.Font.Bold = true;
+            cell.Style.Fill.BackgroundColor = XLColor.LightGray;
+            cell.Style.Border.BottomBorder = XLBorderStyleValues.Thin;
+        }
+
+        var row = 4;
+        foreach (var p in purchases)
+        {
+            var supplierName = p.Supplier?.Name ?? "—";
+            foreach (var item in p.Items)
+            {
+                ws.Cell(row, 1).Value = p.Date.ToString("dd/MM/yyyy");
+                ws.Cell(row, 2).Value = supplierName;
+                ws.Cell(row, 3).Value = item.Product.Name;
+                ws.Cell(row, 4).Value = (double)item.Quantity;
+                ws.Cell(row, 5).Value = (double)item.UnitCostSnapshot;
+                ws.Cell(row, 5).Style.NumberFormat.Format = "#,##0.00";
+                ws.Cell(row, 6).Value = (double)item.Subtotal;
+                ws.Cell(row, 6).Style.NumberFormat.Format = "#,##0.00";
+                row++;
+            }
+        }
+
+        if (purchases.Count > 0)
+        {
+            ws.Cell(row, 5).Value = "TOTAL";
+            ws.Cell(row, 5).Style.Font.Bold = true;
+            ws.Cell(row, 6).FormulaA1 = $"=SUM(F4:F{row - 1})";
+            ws.Cell(row, 6).Style.Font.Bold = true;
+            ws.Cell(row, 6).Style.NumberFormat.Format = "#,##0.00";
+            ws.Cell(row, 6).Style.Border.TopBorder = XLBorderStyleValues.Thin;
+        }
+
+        ws.Columns().AdjustToContents();
+
+        using var ms = new MemoryStream();
+        wb.SaveAs(ms);
+        return ms.ToArray();
+    }
 }
