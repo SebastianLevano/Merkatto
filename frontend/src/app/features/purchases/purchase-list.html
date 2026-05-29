@@ -26,10 +26,9 @@
     </thead>
     <tbody class="divide-y divide-slate-100">
       @for (p of purchases(); track p.id) {
-        <tr (click)="openEdit(p)"
-            [class.cursor-pointer]="isAdmin()"
-            [class.hover:bg-slate-50]="isAdmin()"
-            [title]="isAdmin() ? 'Editar compra' : ''">
+        <tr (click)="openDetail(p)"
+            class="cursor-pointer hover:bg-slate-50"
+            title="Ver compra">
           <td class="px-4 py-3 text-slate-700">{{ p.date | date: 'dd/MM/yyyy' }}</td>
           <td class="px-4 py-3 text-slate-600">{{ p.supplierName ?? '—' }}</td>
           <td class="px-4 py-3 text-right text-slate-600">{{ p.itemCount }}</td>

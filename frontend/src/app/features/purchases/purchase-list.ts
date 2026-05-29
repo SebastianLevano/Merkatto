@@ -39,8 +39,7 @@ export class PurchaseList {
     });
   }
 
-  protected openEdit(p: PurchaseListItem): void {
-    if (!this.isAdmin()) return;
+  protected openDetail(p: PurchaseListItem): void {
     this.router.navigate(['/compras', p.id]);
   }
 

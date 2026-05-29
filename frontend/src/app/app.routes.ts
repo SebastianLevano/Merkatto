@@ -53,8 +53,12 @@ export const routes: Routes = [
         loadComponent: () => import('./features/purchases/purchase-form').then((m) => m.PurchaseForm)
       },
       {
-        path: 'compras/:id',
+        path: 'compras/:id/editar',
         loadComponent: () => import('./features/purchases/purchase-form').then((m) => m.PurchaseForm)
+      },
+      {
+        path: 'compras/:id',
+        loadComponent: () => import('./features/purchases/purchase-detail').then((m) => m.PurchaseDetail)
       },
       {
         path: 'gastos',

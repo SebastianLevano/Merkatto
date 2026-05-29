@@ -124,7 +124,7 @@ export class PurchaseForm {
       ? this.service.update(this.id()!, payload)
       : this.service.create(payload);
     req.subscribe({
-      next: () => this.router.navigate(['/compras']),
+      next: () => this.router.navigate(this.id() ? ['/compras', this.id()] : ['/compras']),
       error: (err: { error?: { detail?: string } }) => {
         this.error.set(err?.error?.detail ?? 'No se pudo guardar la compra. Revisa los datos.');
         this.saving.set(false);
