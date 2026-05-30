@@ -102,7 +102,9 @@ app.UseAuthentication();
 app.UseMiddleware<MustChangePasswordMiddleware>();
 app.UseAuthorization();
 
+app.UseStaticFiles();
 app.MapControllers();
+app.MapFallbackToFile("index.html");
 
 // --- Apply migrations + seed admin on startup ---
 using (var scope = app.Services.CreateScope())

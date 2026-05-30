@@ -32,3 +32,10 @@ Thumbs.db
 docker/data/
 backups/
 *.log
+
+# --- Desktop build artifacts (generated at publish time, not checked in) ---
+backend/src/Merkatto.Desktop/wwwroot/
+*.db
+*.db-shm
+*.db-wal
+signing.key

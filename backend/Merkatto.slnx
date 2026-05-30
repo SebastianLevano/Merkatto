@@ -4,6 +4,7 @@
     <Project Path="src/Merkatto.Application/Merkatto.Application.csproj" />
     <Project Path="src/Merkatto.Domain/Merkatto.Domain.csproj" />
     <Project Path="src/Merkatto.Infrastructure/Merkatto.Infrastructure.csproj" />
+    <Project Path="src/Merkatto.Desktop/Merkatto.Desktop.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Merkatto.IntegrationTests/Merkatto.IntegrationTests.csproj" />

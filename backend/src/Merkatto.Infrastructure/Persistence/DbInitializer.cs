@@ -21,7 +21,11 @@ public sealed class DbInitializer(
 {
     public async Task RunAsync(CancellationToken ct = default)
     {
-        await db.Database.MigrateAsync(ct);
+        // SQLite has no provider-specific migrations; EnsureCreated builds the schema from the model.
+        if (db.Database.IsSqlite())
+            await db.Database.EnsureCreatedAsync(ct);
+        else
+            await db.Database.MigrateAsync(ct);
 
         await SeedBusinessNameAsync(ct);
         await SeedDefaultCategoriesAsync(ct);
