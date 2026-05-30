@@ -1,25 +1,32 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
 
   <PropertyGroup>
-    <OutputType>Exe</OutputType>
+    <OutputType>WinExe</OutputType>
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-    <!-- Suppress warning about referencing a web executable project -->
     <NoWarn>$(NoWarn);NU1603</NoWarn>
+
+    <!-- Velopack version — bump before every release -->
+    <PackageVersion>1.0.0</PackageVersion>
+    <AssemblyVersion>1.0.0</AssemblyVersion>
+    <FileVersion>1.0.0</FileVersion>
+
+    <!-- Self-contained only when publishing with a RID (dotnet publish -r win-x64).
+         During dev builds (dotnet run / dotnet build) no RID → not self-contained. -->
+    <SelfContained Condition="'$(RuntimeIdentifier)' != ''">true</SelfContained>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="Photino.NET" Version="3.0.0" />
+    <PackageReference Include="Velopack" Version="1.0.1" />
   </ItemGroup>
 
   <ItemGroup>
-    <!-- Reuse all controllers, middleware, and filters from the API layer -->
     <ProjectReference Include="..\Merkatto.Api\Merkatto.Api.csproj" />
   </ItemGroup>
 
   <ItemGroup>
-    <!-- Angular SPA build output is copied here before publish (npm run build → wwwroot/) -->
     <Content Update="wwwroot\**" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 

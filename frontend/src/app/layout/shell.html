@@ -59,6 +59,14 @@
       </div>
       <span class="text-xs text-slate-400 hidden sm:block">{{ user()?.email }}</span>
     </header>
+    @if (updateAvailable()) {
+      <div class="bg-violet-700 text-white text-sm px-4 py-2 flex items-center justify-between">
+        <span>
+          🔄 Actualización {{ updateVersion() ? 'v' + updateVersion() : '' }} descargada —
+          cerrá y reabrí Merkatto para aplicarla.
+        </span>
+      </div>
+    }
     <main class="flex-1 overflow-x-hidden p-4 md:p-6">
       <router-outlet />
     </main>

@@ -3,6 +3,7 @@ import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/rou
 import { AuthService } from '../core/auth/auth.service';
 import { AlertsService } from '../features/alerts/alerts.service';
 import { SettingsService } from '../features/settings/settings.service';
+import { UpdateService } from '../core/update/update.service';
 
 interface NavItem {
   label: string;
@@ -20,12 +21,15 @@ export class Shell implements OnInit {
   private readonly auth = inject(AuthService);
   private readonly alertsService = inject(AlertsService);
   private readonly settingsService = inject(SettingsService);
+  private readonly updateService = inject(UpdateService);
   private readonly router = inject(Router);
 
   protected readonly user = this.auth.user;
   protected readonly alertCount = signal(0);
   protected readonly mobileOpen = signal(false);
   protected readonly businessName = this.settingsService.businessName;
+  protected readonly updateAvailable = this.updateService.updateAvailable;
+  protected readonly updateVersion   = this.updateService.updateVersion;
 
   protected readonly nav: NavItem[] = [
     { label: 'Dashboard',     path: '/',          icon: '◈' },
@@ -47,6 +51,7 @@ export class Shell implements OnInit {
       next: (a) => this.alertCount.set(a.length),
       error: () => {}
     });
+    this.updateService.startPolling();
   }
 
   protected toggleMobile(): void {

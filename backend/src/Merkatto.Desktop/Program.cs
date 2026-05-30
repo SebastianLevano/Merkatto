@@ -17,6 +17,12 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.IdentityModel.Tokens;
 using Photino.NET;
+using Velopack;
+
+// ── Velopack: MUST be the very first executable statement ────────────────────────
+// Handles install/uninstall/update hooks sent by the Velopack runtime.
+// If this is a special hook invocation, Run() exits the process immediately.
+VelopackApp.Build().Run();
 
 // ── Data directory ──────────────────────────────────────────────────────────────
 // Windows → C:\ProgramData\Merkatto  (shared between all users on the PC)
@@ -68,8 +74,12 @@ builder.Services.AddScoped<ICurrentUser, HttpCurrentUser>();
 if (prefill is not null)
     builder.Services.AddSingleton(prefill);
 
-// Manual backup trigger (registered as singleton so the Settings page can call it)
+// Manual backup trigger
 builder.Services.AddSingleton(new BackupTrigger(() => CreateOnDemandBackup(dataDir, dbPath)));
+
+// Update state — shared between background checker and /api/v1/app/info endpoint
+var updateState = new AppUpdateState();
+builder.Services.AddSingleton(updateState);
 
 builder.Services.AddControllers(opts => opts.Filters.Add<ValidationFilter>())
     .AddApplicationPart(typeof(AuthController).Assembly);
@@ -138,9 +148,39 @@ app.MapFallback(async (IWebHostEnvironment env, HttpContext ctx) =>
 using (var scope = app.Services.CreateScope())
     await scope.ServiceProvider.GetRequiredService<DbInitializer>().RunAsync();
 
-// ── Start host + open Photino window ────────────────────────────────────────
+// ── Start host ───────────────────────────────────────────────────────────────
 await app.StartAsync();
 
+// ── Background update check (non-blocking) ───────────────────────────────────
+var feedUrl = builder.Configuration["Updates:FeedUrl"] ?? string.Empty;
+Velopack.UpdateInfo? pendingUpdate = null;
+
+if (!string.IsNullOrWhiteSpace(feedUrl))
+{
+    _ = Task.Run(async () =>
+    {
+        try
+        {
+            var mgr = new Velopack.UpdateManager(feedUrl);
+            var info = await mgr.CheckForUpdatesAsync();
+            if (info is not null)
+            {
+                await mgr.DownloadUpdatesAsync(info);
+                pendingUpdate = info;
+                updateState.UpdateAvailable = true;
+                updateState.UpdateVersion   = info.TargetFullRelease.Version.ToString();
+                app.Logger.LogInformation("Update {V} downloaded — will apply on next restart.",
+                    updateState.UpdateVersion);
+            }
+        }
+        catch (Exception ex)
+        {
+            app.Logger.LogWarning(ex, "Update check failed — continuing without update.");
+        }
+    });
+}
+
+// ── Open Photino window ───────────────────────────────────────────────────────
 var window = new PhotinoWindow()
     .SetTitle("Merkatto")
     .SetUseOsDefaultSize(true)
@@ -150,6 +190,14 @@ var window = new PhotinoWindow()
 
 window.WaitForClose();
 await app.StopAsync();
+
+// ── Apply pending update after window closes ──────────────────────────────────
+// Velopack restarts the process automatically with the new version.
+if (pendingUpdate is not null && !string.IsNullOrWhiteSpace(feedUrl))
+{
+    var mgr = new Velopack.UpdateManager(feedUrl);
+    mgr.ApplyUpdatesAndRestart(pendingUpdate);
+}
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
