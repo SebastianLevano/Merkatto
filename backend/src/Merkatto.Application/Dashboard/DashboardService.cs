@@ -42,10 +42,10 @@ public sealed class DashboardService(IAppDbContext db, IDateTimeProvider clock, 
 
         var alerts = await alertService.GetAlertsAsync(ct);
 
-        var topProducts = await db.Products
+        // Fetch all active products and sort in memory — avoids integer-division in SQL
+        // when columns are stored as long (fixed-point). Volume is tiny per installation.
+        var allProducts = await db.Products
             .Where(p => p.IsActive && p.SalePrice > 0 && p.UnitsPerPurchaseUnit > 0)
-            .OrderByDescending(p => (p.SalePrice - p.LastPurchaseCost / p.UnitsPerPurchaseUnit) / p.SalePrice)
-            .Take(5)
             .Select(p => new
             {
                 p.Id,
@@ -57,13 +57,17 @@ public sealed class DashboardService(IAppDbContext db, IDateTimeProvider clock, 
             })
             .ToListAsync(ct);
 
-        var top = topProducts.Select(p =>
-        {
-            var unitCost = p.UnitsPerPurchaseUnit > 0 ? p.LastPurchaseCost / p.UnitsPerPurchaseUnit : 0m;
-            var margin = p.SalePrice - unitCost;
-            var rate = p.SalePrice > 0 ? margin / p.SalePrice : 0m;
-            return new DashboardTopProduct(p.Id, p.Name, p.Category, p.SalePrice, margin, rate);
-        }).ToList();
+        var top = allProducts
+            .Select(p =>
+            {
+                var unitCost = p.UnitsPerPurchaseUnit > 0 ? p.LastPurchaseCost / p.UnitsPerPurchaseUnit : 0m;
+                var margin = p.SalePrice - unitCost;
+                var rate = p.SalePrice > 0 ? margin / p.SalePrice : 0m;
+                return new DashboardTopProduct(p.Id, p.Name, p.Category, p.SalePrice, margin, rate);
+            })
+            .OrderByDescending(p => p.MarginRate)
+            .Take(5)
+            .ToList();
 
         return new DashboardSummary(
             lastClosing,

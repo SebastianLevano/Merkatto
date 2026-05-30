@@ -2,17 +2,19 @@ using Merkatto.Application.Catalog;
 using Merkatto.Application.Common;
 using Merkatto.Application.Purchasing;
 using Merkatto.Domain.Catalog;
+using Merkatto.Infrastructure.Persistence;
 using Merkatto.IntegrationTests.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 
 namespace Merkatto.IntegrationTests;
 
-[Collection("Database")]
-public class PurchaseServiceTests(DatabaseFixture db)
+public abstract class PurchaseServiceTestsBase
 {
+    protected abstract AppDbContext NewCtx();
+
     private async Task<long> SeedProductAsync()
     {
-        await using var ctx = db.CreateContext();
+        await using var ctx = NewCtx();
         var cat = new Category { Name = $"Cat-{Guid.NewGuid():N}" };
         ctx.Categories.Add(cat);
         await ctx.SaveChangesAsync();
@@ -29,7 +31,7 @@ public class PurchaseServiceTests(DatabaseFixture db)
         var productId = await SeedProductAsync();
 
         long purchaseId;
-        await using (var ctx = db.CreateContext())
+        await using (var ctx = NewCtx())
         {
             var svc = new PurchaseService(ctx, new StubClock());
             purchaseId = await svc.CreateAsync(new CreatePurchaseRequest(
@@ -40,16 +42,16 @@ public class PurchaseServiceTests(DatabaseFixture db)
                 CancellationToken.None);
         }
 
-        await using var verify = db.CreateContext();
+        await using var verify = NewCtx();
         var p = await verify.Products.FindAsync(productId);
         Assert.NotNull(p);
-        Assert.Equal(18m, p.WarehouseStock);     // 3 paquetes × 6 unidades
+        Assert.Equal(18m, p.WarehouseStock);
         Assert.Equal(12m, p.LastPurchaseCost);
         Assert.Equal(6, p.UnitsPerPurchaseUnit);
 
         var purchase = await verify.Purchases.FindAsync(purchaseId);
         Assert.NotNull(purchase);
-        Assert.Equal(36m, purchase.TotalCost);   // 3 × 12
+        Assert.Equal(36m, purchase.TotalCost);
 
         var movements = await verify.StockMovements
             .Where(m => m.SourceType == "Purchase" && m.SourceId == purchaseId)
@@ -64,7 +66,7 @@ public class PurchaseServiceTests(DatabaseFixture db)
         var productId = await SeedProductAsync();
         var supplierName = $"Proveedor-{Guid.NewGuid():N}";
 
-        await using (var ctx = db.CreateContext())
+        await using (var ctx = NewCtx())
         {
             var svc = new PurchaseService(ctx, new StubClock());
             await svc.CreateAsync(new CreatePurchaseRequest(
@@ -73,7 +75,7 @@ public class PurchaseServiceTests(DatabaseFixture db)
                 CancellationToken.None);
         }
 
-        await using var verify = db.CreateContext();
+        await using var verify = NewCtx();
         Assert.True(await verify.Suppliers.AnyAsync(s => s.Name == supplierName));
     }
 
@@ -83,7 +85,7 @@ public class PurchaseServiceTests(DatabaseFixture db)
         var productId = await SeedProductAsync();
         var supplierName = $"Proveedor-{Guid.NewGuid():N}";
 
-        await using (var ctx = db.CreateContext())
+        await using (var ctx = NewCtx())
         {
             var svc = new PurchaseService(ctx, new StubClock());
             await svc.CreateAsync(new CreatePurchaseRequest(
@@ -96,7 +98,7 @@ public class PurchaseServiceTests(DatabaseFixture db)
                 CancellationToken.None);
         }
 
-        await using var verify = db.CreateContext();
+        await using var verify = NewCtx();
         Assert.Equal(1, await verify.Suppliers.CountAsync(s => s.Name == supplierName));
     }
 
@@ -106,7 +108,7 @@ public class PurchaseServiceTests(DatabaseFixture db)
         var productId = await SeedProductAsync();
 
         long purchaseId;
-        await using (var ctx = db.CreateContext())
+        await using (var ctx = NewCtx())
         {
             var svc = new PurchaseService(ctx, new StubClock());
             purchaseId = await svc.CreateAsync(new CreatePurchaseRequest(
@@ -115,13 +117,13 @@ public class PurchaseServiceTests(DatabaseFixture db)
                 CancellationToken.None);
         }
 
-        await using (var ctx = db.CreateContext())
+        await using (var ctx = NewCtx())
         {
             var svc = new PurchaseService(ctx, new StubClock());
             await svc.DeleteAsync(purchaseId, CancellationToken.None);
         }
 
-        await using var verify = db.CreateContext();
+        await using var verify = NewCtx();
         var p = await verify.Products.FindAsync(productId);
         Assert.NotNull(p);
         Assert.Equal(0m, p.WarehouseStock);
@@ -129,7 +131,7 @@ public class PurchaseServiceTests(DatabaseFixture db)
         var corrective = await verify.StockMovements
             .Where(m => m.SourceType == "PurchaseDelete" && m.SourceId == purchaseId)
             .SingleAsync();
-        Assert.Equal(-12m, corrective.Quantity);   // 2 × 6, reversed
+        Assert.Equal(-12m, corrective.Quantity);
     }
 
     [Fact]
@@ -138,7 +140,7 @@ public class PurchaseServiceTests(DatabaseFixture db)
         var productId = await SeedProductAsync();
 
         long purchaseId;
-        await using (var ctx = db.CreateContext())
+        await using (var ctx = NewCtx())
         {
             var svc = new PurchaseService(ctx, new StubClock());
             purchaseId = await svc.CreateAsync(new CreatePurchaseRequest(
@@ -147,8 +149,7 @@ public class PurchaseServiceTests(DatabaseFixture db)
                 CancellationToken.None);
         }
 
-        // Simulate stock leaving (e.g. transfer out) by zeroing warehouse stock.
-        await using (var ctx = db.CreateContext())
+        await using (var ctx = NewCtx())
         {
             var p = await ctx.Products.FindAsync(productId);
             Assert.NotNull(p);
@@ -156,7 +157,7 @@ public class PurchaseServiceTests(DatabaseFixture db)
             await ctx.SaveChangesAsync();
         }
 
-        await using (var ctx = db.CreateContext())
+        await using (var ctx = NewCtx())
         {
             var svc = new PurchaseService(ctx, new StubClock());
             await Assert.ThrowsAsync<BusinessRuleException>(() =>
@@ -170,31 +171,41 @@ public class PurchaseServiceTests(DatabaseFixture db)
         var productId = await SeedProductAsync();
 
         long purchaseId;
-        await using (var ctx = db.CreateContext())
+        await using (var ctx = NewCtx())
         {
             var svc = new PurchaseService(ctx, new StubClock());
-            // Initial: 2 paquetes × 6 = 12 units in warehouse
             purchaseId = await svc.CreateAsync(new CreatePurchaseRequest(
                 null, new DateOnly(2025, 8, 1), null,
                 new[] { new CreatePurchaseItemRequest(productId, 2, 6, 10m) }),
                 CancellationToken.None);
         }
 
-        await using (var ctx = db.CreateContext())
+        await using (var ctx = NewCtx())
         {
             var svc = new PurchaseService(ctx, new StubClock());
-            // Update: replace with 1 paquete × 12 = 12 units but different cost
             await svc.UpdateAsync(purchaseId, new CreatePurchaseRequest(
                 null, new DateOnly(2025, 8, 1), null,
                 new[] { new CreatePurchaseItemRequest(productId, 1, 12, 15m) }),
                 CancellationToken.None);
         }
 
-        await using var verify = db.CreateContext();
+        await using var verify = NewCtx();
         var p = await verify.Products.FindAsync(productId);
         Assert.NotNull(p);
-        Assert.Equal(12m, p.WarehouseStock);     // 1 × 12 (old 12 reversed + new 12 added)
-        Assert.Equal(15m, p.LastPurchaseCost);   // updated from new line
+        Assert.Equal(12m, p.WarehouseStock);
+        Assert.Equal(15m, p.LastPurchaseCost);
         Assert.Equal(12, p.UnitsPerPurchaseUnit);
     }
+}
+
+[Collection("Postgres")]
+public sealed class PurchaseServiceTests_Postgres(PostgresFixture f) : PurchaseServiceTestsBase
+{
+    protected override AppDbContext NewCtx() => f.CreateContext();
+}
+
+[Collection("Sqlite")]
+public sealed class PurchaseServiceTests_Sqlite(SqliteFixture f) : PurchaseServiceTestsBase
+{
+    protected override AppDbContext NewCtx() => f.CreateContext();
 }

@@ -4,21 +4,29 @@ using Microsoft.EntityFrameworkCore.Design;
 namespace Merkatto.Infrastructure.Persistence;
 
 /// <summary>
-/// Used by `dotnet ef` at design time so migrations don't require the API host to start.
-/// The connection string is irrelevant for scaffolding migrations.
+/// Used by `dotnet ef` at design time. Set EF_PROVIDER=Sqlite to generate SQLite migrations.
+/// Defaults to PostgreSQL.
 /// </summary>
 public sealed class DesignTimeDbContextFactory : IDesignTimeDbContextFactory<AppDbContext>
 {
     public AppDbContext CreateDbContext(string[] args)
     {
-        var connection = Environment.GetEnvironmentVariable("ConnectionStrings__Default")
-                         ?? "Host=localhost;Port=5432;Database=merkatto;Username=merkatto;Password=merkatto";
+        var provider = Environment.GetEnvironmentVariable("EF_PROVIDER") ?? "Postgres";
+        var builder = new DbContextOptionsBuilder<AppDbContext>();
 
-        var options = new DbContextOptionsBuilder<AppDbContext>()
-            .UseNpgsql(connection)
-            .UseSnakeCaseNamingConvention()
-            .Options;
+        if (provider.Equals("Sqlite", StringComparison.OrdinalIgnoreCase))
+        {
+            var path = Environment.GetEnvironmentVariable("ConnectionStrings__Default")
+                       ?? "Data Source=merkatto_design.db";
+            builder.UseSqlite(path).UseSnakeCaseNamingConvention();
+        }
+        else
+        {
+            var connection = Environment.GetEnvironmentVariable("ConnectionStrings__Default")
+                             ?? "Host=localhost;Port=5432;Database=merkatto;Username=merkatto;Password=merkatto";
+            builder.UseNpgsql(connection).UseSnakeCaseNamingConvention();
+        }
 
-        return new AppDbContext(options);
+        return new AppDbContext(builder.Options);
     }
 }

@@ -12,8 +12,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Merkatto.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20260529223208_AddMustChangePassword")]
-    partial class AddMustChangePassword
+    [Migration("20260530054542_RemoveExplicitPrecision")]
+    partial class RemoveExplicitPrecision
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -340,9 +340,8 @@ namespace Merkatto.Infrastructure.Persistence.Migrations
                         .HasColumnType("bigint")
                         .HasColumnName("category_id");
 
-                    b.Property<decimal>("CounterStock")
-                        .HasPrecision(18, 3)
-                        .HasColumnType("numeric(18,3)")
+                    b.Property<long>("CounterStock")
+                        .HasColumnType("bigint")
                         .HasColumnName("counter_stock");
 
                     b.Property<DateTimeOffset>("CreatedAt")
@@ -370,14 +369,12 @@ namespace Merkatto.Infrastructure.Persistence.Migrations
                         .HasColumnType("boolean")
                         .HasColumnName("is_deleted");
 
-                    b.Property<decimal>("LastPurchaseCost")
-                        .HasPrecision(18, 2)
-                        .HasColumnType("numeric(18,2)")
+                    b.Property<long>("LastPurchaseCost")
+                        .HasColumnType("bigint")
                         .HasColumnName("last_purchase_cost");
 
-                    b.Property<decimal>("MinStock")
-                        .HasPrecision(18, 3)
-                        .HasColumnType("numeric(18,3)")
+                    b.Property<long>("MinStock")
+                        .HasColumnType("bigint")
                         .HasColumnName("min_stock");
 
                     b.Property<string>("Name")
@@ -392,9 +389,8 @@ namespace Merkatto.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(40)")
                         .HasColumnName("purchase_unit");
 
-                    b.Property<decimal>("SalePrice")
-                        .HasPrecision(18, 2)
-                        .HasColumnType("numeric(18,2)")
+                    b.Property<long>("SalePrice")
+                        .HasColumnType("bigint")
                         .HasColumnName("sale_price");
 
                     b.Property<string>("SaleUnit")
@@ -415,9 +411,8 @@ namespace Merkatto.Infrastructure.Persistence.Migrations
                         .HasColumnType("text")
                         .HasColumnName("updated_by");
 
-                    b.Property<decimal>("WarehouseStock")
-                        .HasPrecision(18, 3)
-                        .HasColumnType("numeric(18,3)")
+                    b.Property<long>("WarehouseStock")
+                        .HasColumnType("bigint")
                         .HasColumnName("warehouse_stock");
 
                     b.HasKey("Id")
@@ -523,9 +518,8 @@ namespace Merkatto.Infrastructure.Persistence.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
 
-                    b.Property<decimal>("Amount")
-                        .HasPrecision(18, 2)
-                        .HasColumnType("numeric(18,2)")
+                    b.Property<long>("Amount")
+                        .HasColumnType("bigint")
                         .HasColumnName("amount");
 
                     b.Property<DateTimeOffset>("CreatedAt")
@@ -610,9 +604,8 @@ namespace Merkatto.Infrastructure.Persistence.Migrations
                         .HasColumnType("text")
                         .HasColumnName("notes");
 
-                    b.Property<decimal>("TotalAmount")
-                        .HasPrecision(18, 2)
-                        .HasColumnType("numeric(18,2)")
+                    b.Property<long>("TotalAmount")
+                        .HasColumnType("bigint")
                         .HasColumnName("total_amount");
 
                     b.Property<DateTimeOffset?>("UpdatedAt")
@@ -667,14 +660,12 @@ namespace Merkatto.Infrastructure.Persistence.Migrations
                         .HasColumnType("boolean")
                         .HasColumnName("is_deleted");
 
-                    b.Property<decimal>("LineTotal")
-                        .HasPrecision(18, 2)
-                        .HasColumnType("numeric(18,2)")
+                    b.Property<long>("LineTotal")
+                        .HasColumnType("bigint")
                         .HasColumnName("line_total");
 
-                    b.Property<decimal>("Quantity")
-                        .HasPrecision(18, 3)
-                        .HasColumnType("numeric(18,3)")
+                    b.Property<long>("Quantity")
+                        .HasColumnType("bigint")
                         .HasColumnName("quantity");
 
                     b.Property<DateTimeOffset?>("UpdatedAt")
@@ -731,9 +722,8 @@ namespace Merkatto.Infrastructure.Persistence.Migrations
                         .HasColumnType("bigint")
                         .HasColumnName("product_id");
 
-                    b.Property<decimal>("Quantity")
-                        .HasPrecision(18, 3)
-                        .HasColumnType("numeric(18,3)")
+                    b.Property<long>("Quantity")
+                        .HasColumnType("bigint")
                         .HasColumnName("quantity");
 
                     b.Property<string>("Reason")
@@ -806,9 +796,8 @@ namespace Merkatto.Infrastructure.Persistence.Migrations
                         .HasColumnType("bigint")
                         .HasColumnName("product_id");
 
-                    b.Property<decimal>("Quantity")
-                        .HasPrecision(18, 3)
-                        .HasColumnType("numeric(18,3)")
+                    b.Property<long>("Quantity")
+                        .HasColumnType("bigint")
                         .HasColumnName("quantity");
 
                     b.Property<long?>("SourceId")
@@ -849,9 +838,8 @@ namespace Merkatto.Infrastructure.Persistence.Migrations
                         .HasColumnType("date")
                         .HasColumnName("business_date");
 
-                    b.Property<decimal>("CashAmount")
-                        .HasPrecision(18, 2)
-                        .HasColumnType("numeric(18,2)")
+                    b.Property<long>("CashAmount")
+                        .HasColumnType("bigint")
                         .HasColumnName("cash_amount");
 
                     b.Property<DateTimeOffset>("ClosedAt")
@@ -870,9 +858,8 @@ namespace Merkatto.Infrastructure.Persistence.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("deleted_at");
 
-                    b.Property<decimal>("EstimatedProfit")
-                        .HasPrecision(18, 2)
-                        .HasColumnType("numeric(18,2)")
+                    b.Property<long>("EstimatedProfit")
+                        .HasColumnType("bigint")
                         .HasColumnName("estimated_profit");
 
                     b.Property<bool>("IsDeleted")
@@ -883,29 +870,24 @@ namespace Merkatto.Infrastructure.Persistence.Migrations
                         .HasColumnType("text")
                         .HasColumnName("notes");
 
-                    b.Property<decimal>("PlinAmount")
-                        .HasPrecision(18, 2)
-                        .HasColumnType("numeric(18,2)")
+                    b.Property<long>("PlinAmount")
+                        .HasColumnType("bigint")
                         .HasColumnName("plin_amount");
 
-                    b.Property<decimal>("PosAmount")
-                        .HasPrecision(18, 2)
-                        .HasColumnType("numeric(18,2)")
+                    b.Property<long>("PosAmount")
+                        .HasColumnType("bigint")
                         .HasColumnName("pos_amount");
 
-                    b.Property<decimal>("PosCommissionRate")
-                        .HasPrecision(6, 4)
-                        .HasColumnType("numeric(6,4)")
+                    b.Property<long>("PosCommissionRate")
+                        .HasColumnType("bigint")
                         .HasColumnName("pos_commission_rate");
 
-                    b.Property<decimal>("QuickPurchases")
-                        .HasPrecision(18, 2)
-                        .HasColumnType("numeric(18,2)")
+                    b.Property<long>("QuickPurchases")
+                        .HasColumnType("bigint")
                         .HasColumnName("quick_purchases");
 
-                    b.Property<decimal>("TotalExpenses")
-                        .HasPrecision(18, 2)
-                        .HasColumnType("numeric(18,2)")
+                    b.Property<long>("TotalExpenses")
+                        .HasColumnType("bigint")
                         .HasColumnName("total_expenses");
 
                     b.Property<DateTimeOffset?>("UpdatedAt")
@@ -916,9 +898,8 @@ namespace Merkatto.Infrastructure.Persistence.Migrations
                         .HasColumnType("text")
                         .HasColumnName("updated_by");
 
-                    b.Property<decimal>("YapeAmount")
-                        .HasPrecision(18, 2)
-                        .HasColumnType("numeric(18,2)")
+                    b.Property<long>("YapeAmount")
+                        .HasColumnType("bigint")
                         .HasColumnName("yape_amount");
 
                     b.HasKey("Id")
@@ -940,9 +921,8 @@ namespace Merkatto.Infrastructure.Persistence.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
 
-                    b.Property<decimal>("Amount")
-                        .HasPrecision(18, 2)
-                        .HasColumnType("numeric(18,2)")
+                    b.Property<long>("Amount")
+                        .HasColumnType("bigint")
                         .HasColumnName("amount");
 
                     b.Property<DateTimeOffset>("CreatedAt")
@@ -1035,9 +1015,8 @@ namespace Merkatto.Infrastructure.Persistence.Migrations
                         .HasColumnType("bigint")
                         .HasColumnName("supplier_id");
 
-                    b.Property<decimal>("TotalCost")
-                        .HasPrecision(18, 2)
-                        .HasColumnType("numeric(18,2)")
+                    b.Property<long>("TotalCost")
+                        .HasColumnType("bigint")
                         .HasColumnName("total_cost");
 
                     b.Property<DateTimeOffset?>("UpdatedAt")
@@ -1100,14 +1079,12 @@ namespace Merkatto.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(40)")
                         .HasColumnName("purchase_unit");
 
-                    b.Property<decimal>("Quantity")
-                        .HasPrecision(18, 3)
-                        .HasColumnType("numeric(18,3)")
+                    b.Property<long>("Quantity")
+                        .HasColumnType("bigint")
                         .HasColumnName("quantity");
 
-                    b.Property<decimal>("UnitCostSnapshot")
-                        .HasPrecision(18, 2)
-                        .HasColumnType("numeric(18,2)")
+                    b.Property<long>("UnitCostSnapshot")
+                        .HasColumnType("bigint")
                         .HasColumnName("unit_cost_snapshot");
 
                     b.Property<DateTimeOffset?>("UpdatedAt")

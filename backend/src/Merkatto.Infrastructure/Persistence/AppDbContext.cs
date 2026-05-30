@@ -8,6 +8,7 @@ using Merkatto.Domain.Credit;
 using Merkatto.Domain.Inventory;
 using Merkatto.Domain.Operations;
 using Merkatto.Domain.Purchasing;
+using Merkatto.Infrastructure.Persistence.Converters;
 using Microsoft.EntityFrameworkCore;
 
 namespace Merkatto.Infrastructure.Persistence;
@@ -51,6 +52,15 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             b.Property(s => s.Value).HasMaxLength(500);
         });
 
+        // jsonb is Postgres-only; SQLite stores these as TEXT (default).
+        if (Database.ProviderName?.Contains("Npgsql") == true)
+        {
+            modelBuilder.Entity<AuditLog>()
+                .Property(a => a.OldValues).HasColumnType("jsonb");
+            modelBuilder.Entity<AuditLog>()
+                .Property(a => a.NewValues).HasColumnType("jsonb");
+        }
+
         // Soft-delete: hide deleted rows automatically for every ISoftDelete entity.
         foreach (var entityType in modelBuilder.Model.GetEntityTypes())
         {
@@ -68,8 +78,10 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
 
     protected override void ConfigureConventions(ModelConfigurationBuilder builder)
     {
-        // Money/quantities default to numeric(18,2); specific fields override in their config.
-        builder.Properties<decimal>().HavePrecision(18, 2);
+        // All decimal properties use a fixed-point long converter (×10,000) so that SQL
+        // aggregations (SUM, ORDER BY) work identically on both PostgreSQL and SQLite.
+        // C# code always sees decimal; the conversion is transparent to the application.
+        builder.Properties<decimal>().HaveConversion<FixedPoint4Converter>();
         base.ConfigureConventions(builder);
     }
 }

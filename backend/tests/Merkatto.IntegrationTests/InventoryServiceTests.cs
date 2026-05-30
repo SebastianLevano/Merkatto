@@ -3,17 +3,19 @@ using Merkatto.Application.Common;
 using Merkatto.Application.Inventory;
 using Merkatto.Domain.Catalog;
 using Merkatto.Domain.Inventory;
+using Merkatto.Infrastructure.Persistence;
 using Merkatto.IntegrationTests.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 
 namespace Merkatto.IntegrationTests;
 
-[Collection("Database")]
-public class InventoryServiceTests(DatabaseFixture db)
+public abstract class InventoryServiceTestsBase
 {
+    protected abstract AppDbContext NewCtx();
+
     private async Task<long> SeedProductWithStockAsync(decimal warehouse, decimal counter = 0m)
     {
-        await using var ctx = db.CreateContext();
+        await using var ctx = NewCtx();
         var cat = new Category { Name = $"Cat-{Guid.NewGuid():N}" };
         ctx.Categories.Add(cat);
         await ctx.SaveChangesAsync();
@@ -37,17 +39,17 @@ public class InventoryServiceTests(DatabaseFixture db)
     {
         var productId = await SeedProductWithStockAsync(warehouse: 20m, counter: 5m);
 
-        await using (var ctx = db.CreateContext())
+        await using (var ctx = NewCtx())
         {
             var svc = new InventoryService(ctx, new StubClock());
             await svc.TransferAsync(new TransferRequest(productId, 8m, null), CancellationToken.None);
         }
 
-        await using var verify = db.CreateContext();
+        await using var verify = NewCtx();
         var p = await verify.Products.FindAsync(productId);
         Assert.NotNull(p);
-        Assert.Equal(12m, p.WarehouseStock);  // 20 - 8
-        Assert.Equal(13m, p.CounterStock);    // 5 + 8
+        Assert.Equal(12m, p.WarehouseStock);
+        Assert.Equal(13m, p.CounterStock);
 
         var movements = await verify.StockMovements
             .Where(m => m.ProductId == productId && m.SourceType == "Transfer")
@@ -62,7 +64,7 @@ public class InventoryServiceTests(DatabaseFixture db)
     {
         var productId = await SeedProductWithStockAsync(warehouse: 3m);
 
-        await using var ctx = db.CreateContext();
+        await using var ctx = NewCtx();
         var svc = new InventoryService(ctx, new StubClock());
         await Assert.ThrowsAsync<BusinessRuleException>(() =>
             svc.TransferAsync(new TransferRequest(productId, 10m, null), CancellationToken.None));
@@ -73,7 +75,7 @@ public class InventoryServiceTests(DatabaseFixture db)
     {
         var productId = await SeedProductWithStockAsync(warehouse: 15m);
 
-        await using (var ctx = db.CreateContext())
+        await using (var ctx = NewCtx())
         {
             var svc = new InventoryService(ctx, new StubClock());
             await svc.AdjustAsync(new AdjustmentRequest(
@@ -81,10 +83,10 @@ public class InventoryServiceTests(DatabaseFixture db)
                 CancellationToken.None);
         }
 
-        await using var verify = db.CreateContext();
+        await using var verify = NewCtx();
         var p = await verify.Products.FindAsync(productId);
         Assert.NotNull(p);
-        Assert.Equal(12m, p.WarehouseStock);  // 15 - 3
+        Assert.Equal(12m, p.WarehouseStock);
 
         var adj = await verify.InventoryAdjustments.SingleAsync(a => a.ProductId == productId);
         Assert.Equal(-3m, adj.Quantity);
@@ -100,7 +102,7 @@ public class InventoryServiceTests(DatabaseFixture db)
     {
         var productId = await SeedProductWithStockAsync(warehouse: 5m);
 
-        await using var ctx = db.CreateContext();
+        await using var ctx = NewCtx();
         var svc = new InventoryService(ctx, new StubClock());
         await Assert.ThrowsAsync<BusinessRuleException>(() =>
             svc.AdjustAsync(new AdjustmentRequest(
@@ -113,7 +115,7 @@ public class InventoryServiceTests(DatabaseFixture db)
     {
         var productId = await SeedProductWithStockAsync(warehouse: 10m, counter: 5m);
 
-        await using (var ctx = db.CreateContext())
+        await using (var ctx = NewCtx())
         {
             var svc = new InventoryService(ctx, new StubClock());
             await svc.BatchCountAsync(new BatchCountRequest(
@@ -122,20 +124,32 @@ public class InventoryServiceTests(DatabaseFixture db)
                 Date: null), CancellationToken.None);
         }
 
-        await using var verify = db.CreateContext();
+        await using var verify = NewCtx();
         var p = await verify.Products.FindAsync(productId);
         Assert.NotNull(p);
-        Assert.Equal(7m, p.WarehouseStock);   // counted
-        Assert.Equal(3m, p.CounterStock);     // counted
+        Assert.Equal(7m, p.WarehouseStock);
+        Assert.Equal(3m, p.CounterStock);
 
         var adjustments = await verify.InventoryAdjustments
             .Where(a => a.ProductId == productId)
             .ToListAsync();
-        Assert.Equal(2, adjustments.Count);   // one per location that changed
+        Assert.Equal(2, adjustments.Count);
 
         var warehouseAdj = adjustments.Single(a => a.Location == StockLocation.Warehouse);
-        Assert.Equal(-3m, warehouseAdj.Quantity);  // 7 - 10 = -3
+        Assert.Equal(-3m, warehouseAdj.Quantity);
         var counterAdj = adjustments.Single(a => a.Location == StockLocation.Counter);
-        Assert.Equal(-2m, counterAdj.Quantity);    // 3 - 5 = -2
+        Assert.Equal(-2m, counterAdj.Quantity);
     }
+}
+
+[Collection("Postgres")]
+public sealed class InventoryServiceTests_Postgres(PostgresFixture f) : InventoryServiceTestsBase
+{
+    protected override AppDbContext NewCtx() => f.CreateContext();
+}
+
+[Collection("Sqlite")]
+public sealed class InventoryServiceTests_Sqlite(SqliteFixture f) : InventoryServiceTestsBase
+{
+    protected override AppDbContext NewCtx() => f.CreateContext();
 }

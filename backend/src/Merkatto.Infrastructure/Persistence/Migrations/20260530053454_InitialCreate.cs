@@ -13,10 +13,22 @@ namespace Merkatto.Infrastructure.Persistence.Migrations
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.CreateTable(
+                name: "app_settings",
+                columns: table => new
+                {
+                    key = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    value = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_app_settings", x => x.key);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "audit_logs",
                 columns: table => new
                 {
-                    id = table.Column<long>(type: "bigint", nullable: false)
+                    id = table.Column<long>(nullable: false)
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
                     user_id = table.Column<string>(type: "text", nullable: true),
                     action = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: false),
@@ -36,7 +48,7 @@ namespace Merkatto.Infrastructure.Persistence.Migrations
                 name: "brands",
                 columns: table => new
                 {
-                    id = table.Column<long>(type: "bigint", nullable: false)
+                    id = table.Column<long>(nullable: false)
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
                     name = table.Column<string>(type: "character varying(120)", maxLength: 120, nullable: false),
                     created_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
@@ -55,7 +67,7 @@ namespace Merkatto.Infrastructure.Persistence.Migrations
                 name: "categories",
                 columns: table => new
                 {
-                    id = table.Column<long>(type: "bigint", nullable: false)
+                    id = table.Column<long>(nullable: false)
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
                     name = table.Column<string>(type: "character varying(120)", maxLength: 120, nullable: false),
                     created_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
@@ -74,7 +86,7 @@ namespace Merkatto.Infrastructure.Persistence.Migrations
                 name: "credit_customers",
                 columns: table => new
                 {
-                    id = table.Column<long>(type: "bigint", nullable: false)
+                    id = table.Column<long>(nullable: false)
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
                     name = table.Column<string>(type: "character varying(160)", maxLength: 160, nullable: false),
                     phone = table.Column<string>(type: "character varying(30)", maxLength: 30, nullable: true),
@@ -95,17 +107,17 @@ namespace Merkatto.Infrastructure.Persistence.Migrations
                 name: "daily_closings",
                 columns: table => new
                 {
-                    id = table.Column<long>(type: "bigint", nullable: false)
+                    id = table.Column<long>(nullable: false)
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
                     business_date = table.Column<DateOnly>(type: "date", nullable: false),
-                    cash_amount = table.Column<decimal>(type: "numeric(18,2)", precision: 18, scale: 2, nullable: false),
-                    yape_amount = table.Column<decimal>(type: "numeric(18,2)", precision: 18, scale: 2, nullable: false),
-                    plin_amount = table.Column<decimal>(type: "numeric(18,2)", precision: 18, scale: 2, nullable: false),
-                    pos_amount = table.Column<decimal>(type: "numeric(18,2)", precision: 18, scale: 2, nullable: false),
-                    pos_commission_rate = table.Column<decimal>(type: "numeric(6,4)", precision: 6, scale: 4, nullable: false),
-                    total_expenses = table.Column<decimal>(type: "numeric(18,2)", precision: 18, scale: 2, nullable: false),
-                    quick_purchases = table.Column<decimal>(type: "numeric(18,2)", precision: 18, scale: 2, nullable: false),
-                    estimated_profit = table.Column<decimal>(type: "numeric(18,2)", precision: 18, scale: 2, nullable: false),
+                    cash_amount = table.Column<long>(nullable: false),
+                    yape_amount = table.Column<long>(nullable: false),
+                    plin_amount = table.Column<long>(nullable: false),
+                    pos_amount = table.Column<long>(nullable: false),
+                    pos_commission_rate = table.Column<long>(nullable: false),
+                    total_expenses = table.Column<long>(nullable: false),
+                    quick_purchases = table.Column<long>(nullable: false),
+                    estimated_profit = table.Column<long>(nullable: false),
                     notes = table.Column<string>(type: "text", nullable: true),
                     closed_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
                     created_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
@@ -124,7 +136,7 @@ namespace Merkatto.Infrastructure.Persistence.Migrations
                 name: "suppliers",
                 columns: table => new
                 {
-                    id = table.Column<long>(type: "bigint", nullable: false)
+                    id = table.Column<long>(nullable: false)
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
                     name = table.Column<string>(type: "text", nullable: false),
                     phone = table.Column<string>(type: "text", nullable: true),
@@ -145,13 +157,14 @@ namespace Merkatto.Infrastructure.Persistence.Migrations
                 name: "users",
                 columns: table => new
                 {
-                    id = table.Column<long>(type: "bigint", nullable: false)
+                    id = table.Column<long>(nullable: false)
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
                     email = table.Column<string>(type: "character varying(256)", maxLength: 256, nullable: false),
                     full_name = table.Column<string>(type: "character varying(160)", maxLength: 160, nullable: false),
                     password_hash = table.Column<string>(type: "text", nullable: false),
                     role = table.Column<int>(type: "integer", nullable: false),
                     is_active = table.Column<bool>(type: "boolean", nullable: false),
+                    must_change_password = table.Column<bool>(type: "boolean", nullable: false),
                     last_login_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true),
                     created_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
                     created_by = table.Column<string>(type: "text", nullable: true),
@@ -169,20 +182,20 @@ namespace Merkatto.Infrastructure.Persistence.Migrations
                 name: "products",
                 columns: table => new
                 {
-                    id = table.Column<long>(type: "bigint", nullable: false)
+                    id = table.Column<long>(nullable: false)
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
                     name = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
                     internal_code = table.Column<string>(type: "character varying(64)", maxLength: 64, nullable: true),
-                    category_id = table.Column<long>(type: "bigint", nullable: false),
-                    brand_id = table.Column<long>(type: "bigint", nullable: true),
+                    category_id = table.Column<long>(nullable: false),
+                    brand_id = table.Column<long>(nullable: true),
                     purchase_unit = table.Column<string>(type: "character varying(40)", maxLength: 40, nullable: false),
-                    last_purchase_cost = table.Column<decimal>(type: "numeric(18,2)", precision: 18, scale: 2, nullable: false),
+                    last_purchase_cost = table.Column<long>(nullable: false),
                     units_per_purchase_unit = table.Column<int>(type: "integer", nullable: false),
                     sale_unit = table.Column<string>(type: "character varying(40)", maxLength: 40, nullable: false),
-                    sale_price = table.Column<decimal>(type: "numeric(18,2)", precision: 18, scale: 2, nullable: false),
-                    warehouse_stock = table.Column<decimal>(type: "numeric(18,3)", precision: 18, scale: 3, nullable: false),
-                    counter_stock = table.Column<decimal>(type: "numeric(18,3)", precision: 18, scale: 3, nullable: false),
-                    min_stock = table.Column<decimal>(type: "numeric(18,3)", precision: 18, scale: 3, nullable: false),
+                    sale_price = table.Column<long>(nullable: false),
+                    warehouse_stock = table.Column<long>(nullable: false),
+                    counter_stock = table.Column<long>(nullable: false),
+                    min_stock = table.Column<long>(nullable: false),
                     is_active = table.Column<bool>(type: "boolean", nullable: false),
                     created_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
                     created_by = table.Column<string>(type: "text", nullable: true),
@@ -212,11 +225,11 @@ namespace Merkatto.Infrastructure.Persistence.Migrations
                 name: "credit_payments",
                 columns: table => new
                 {
-                    id = table.Column<long>(type: "bigint", nullable: false)
+                    id = table.Column<long>(nullable: false)
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
-                    customer_id = table.Column<long>(type: "bigint", nullable: false),
+                    customer_id = table.Column<long>(nullable: false),
                     date = table.Column<DateOnly>(type: "date", nullable: false),
-                    amount = table.Column<decimal>(type: "numeric(18,2)", precision: 18, scale: 2, nullable: false),
+                    amount = table.Column<long>(nullable: false),
                     notes = table.Column<string>(type: "text", nullable: true),
                     created_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
                     created_by = table.Column<string>(type: "text", nullable: true),
@@ -240,11 +253,11 @@ namespace Merkatto.Infrastructure.Persistence.Migrations
                 name: "credit_sales",
                 columns: table => new
                 {
-                    id = table.Column<long>(type: "bigint", nullable: false)
+                    id = table.Column<long>(nullable: false)
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
-                    customer_id = table.Column<long>(type: "bigint", nullable: false),
+                    customer_id = table.Column<long>(nullable: false),
                     date = table.Column<DateOnly>(type: "date", nullable: false),
-                    total_amount = table.Column<decimal>(type: "numeric(18,2)", precision: 18, scale: 2, nullable: false),
+                    total_amount = table.Column<long>(nullable: false),
                     notes = table.Column<string>(type: "text", nullable: true),
                     created_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
                     created_by = table.Column<string>(type: "text", nullable: true),
@@ -268,13 +281,13 @@ namespace Merkatto.Infrastructure.Persistence.Migrations
                 name: "expenses",
                 columns: table => new
                 {
-                    id = table.Column<long>(type: "bigint", nullable: false)
+                    id = table.Column<long>(nullable: false)
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
                     date = table.Column<DateOnly>(type: "date", nullable: false),
                     type = table.Column<int>(type: "integer", nullable: false),
-                    amount = table.Column<decimal>(type: "numeric(18,2)", precision: 18, scale: 2, nullable: false),
+                    amount = table.Column<long>(nullable: false),
                     description = table.Column<string>(type: "character varying(300)", maxLength: 300, nullable: true),
-                    daily_closing_id = table.Column<long>(type: "bigint", nullable: true),
+                    daily_closing_id = table.Column<long>(nullable: true),
                     created_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
                     created_by = table.Column<string>(type: "text", nullable: true),
                     updated_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true),
@@ -297,11 +310,11 @@ namespace Merkatto.Infrastructure.Persistence.Migrations
                 name: "purchases",
                 columns: table => new
                 {
-                    id = table.Column<long>(type: "bigint", nullable: false)
+                    id = table.Column<long>(nullable: false)
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
-                    supplier_id = table.Column<long>(type: "bigint", nullable: true),
+                    supplier_id = table.Column<long>(nullable: true),
                     date = table.Column<DateOnly>(type: "date", nullable: false),
-                    total_cost = table.Column<decimal>(type: "numeric(18,2)", precision: 18, scale: 2, nullable: false),
+                    total_cost = table.Column<long>(nullable: false),
                     notes = table.Column<string>(type: "text", nullable: true),
                     created_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
                     created_by = table.Column<string>(type: "text", nullable: true),
@@ -324,9 +337,9 @@ namespace Merkatto.Infrastructure.Persistence.Migrations
                 name: "refresh_tokens",
                 columns: table => new
                 {
-                    id = table.Column<long>(type: "bigint", nullable: false)
+                    id = table.Column<long>(nullable: false)
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
-                    user_id = table.Column<long>(type: "bigint", nullable: false),
+                    user_id = table.Column<long>(nullable: false),
                     token_hash = table.Column<string>(type: "character varying(128)", maxLength: 128, nullable: false),
                     expires_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
                     revoked_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true),
@@ -354,12 +367,12 @@ namespace Merkatto.Infrastructure.Persistence.Migrations
                 name: "inventory_adjustments",
                 columns: table => new
                 {
-                    id = table.Column<long>(type: "bigint", nullable: false)
+                    id = table.Column<long>(nullable: false)
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
-                    product_id = table.Column<long>(type: "bigint", nullable: false),
+                    product_id = table.Column<long>(nullable: false),
                     type = table.Column<int>(type: "integer", nullable: false),
                     location = table.Column<int>(type: "integer", nullable: false),
-                    quantity = table.Column<decimal>(type: "numeric(18,3)", precision: 18, scale: 3, nullable: false),
+                    quantity = table.Column<long>(nullable: false),
                     reason = table.Column<string>(type: "text", nullable: true),
                     date = table.Column<DateOnly>(type: "date", nullable: false),
                     created_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
@@ -384,14 +397,14 @@ namespace Merkatto.Infrastructure.Persistence.Migrations
                 name: "stock_movements",
                 columns: table => new
                 {
-                    id = table.Column<long>(type: "bigint", nullable: false)
+                    id = table.Column<long>(nullable: false)
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
-                    product_id = table.Column<long>(type: "bigint", nullable: false),
+                    product_id = table.Column<long>(nullable: false),
                     movement_type = table.Column<int>(type: "integer", nullable: false),
                     location = table.Column<int>(type: "integer", nullable: false),
-                    quantity = table.Column<decimal>(type: "numeric(18,3)", precision: 18, scale: 3, nullable: false),
+                    quantity = table.Column<long>(nullable: false),
                     source_type = table.Column<string>(type: "text", nullable: true),
-                    source_id = table.Column<long>(type: "bigint", nullable: true),
+                    source_id = table.Column<long>(nullable: true),
                     occurred_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
                     notes = table.Column<string>(type: "text", nullable: true),
                     created_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
@@ -416,12 +429,12 @@ namespace Merkatto.Infrastructure.Persistence.Migrations
                 name: "credit_sale_items",
                 columns: table => new
                 {
-                    id = table.Column<long>(type: "bigint", nullable: false)
+                    id = table.Column<long>(nullable: false)
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
-                    credit_sale_id = table.Column<long>(type: "bigint", nullable: false),
+                    credit_sale_id = table.Column<long>(nullable: false),
                     description = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
-                    quantity = table.Column<decimal>(type: "numeric(18,3)", precision: 18, scale: 3, nullable: false),
-                    line_total = table.Column<decimal>(type: "numeric(18,2)", precision: 18, scale: 2, nullable: false),
+                    quantity = table.Column<long>(nullable: false),
+                    line_total = table.Column<long>(nullable: false),
                     created_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
                     created_by = table.Column<string>(type: "text", nullable: true),
                     updated_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true),
@@ -444,14 +457,14 @@ namespace Merkatto.Infrastructure.Persistence.Migrations
                 name: "purchase_items",
                 columns: table => new
                 {
-                    id = table.Column<long>(type: "bigint", nullable: false)
+                    id = table.Column<long>(nullable: false)
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
-                    purchase_id = table.Column<long>(type: "bigint", nullable: false),
-                    product_id = table.Column<long>(type: "bigint", nullable: false),
+                    purchase_id = table.Column<long>(nullable: false),
+                    product_id = table.Column<long>(nullable: false),
                     purchase_unit = table.Column<string>(type: "character varying(40)", maxLength: 40, nullable: false),
-                    quantity = table.Column<decimal>(type: "numeric(18,3)", precision: 18, scale: 3, nullable: false),
+                    quantity = table.Column<long>(nullable: false),
                     conversion_factor_snapshot = table.Column<int>(type: "integer", nullable: false),
-                    unit_cost_snapshot = table.Column<decimal>(type: "numeric(18,2)", precision: 18, scale: 2, nullable: false),
+                    unit_cost_snapshot = table.Column<long>(nullable: false),
                     created_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
                     created_by = table.Column<string>(type: "text", nullable: true),
                     updated_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true),
@@ -592,6 +605,9 @@ namespace Merkatto.Infrastructure.Persistence.Migrations
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
+            migrationBuilder.DropTable(
+                name: "app_settings");
+
             migrationBuilder.DropTable(
                 name: "audit_logs");
 

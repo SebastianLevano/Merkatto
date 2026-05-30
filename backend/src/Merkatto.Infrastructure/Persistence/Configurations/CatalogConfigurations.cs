@@ -30,11 +30,6 @@ public sealed class ProductConfiguration : IEntityTypeConfiguration<Product>
         b.Property(p => p.PurchaseUnit).IsRequired().HasMaxLength(40);
         b.Property(p => p.SaleUnit).IsRequired().HasMaxLength(40);
 
-        // Stock & quantities use 3 decimals to allow fractional sale units.
-        b.Property(p => p.WarehouseStock).HasPrecision(18, 3);
-        b.Property(p => p.CounterStock).HasPrecision(18, 3);
-        b.Property(p => p.MinStock).HasPrecision(18, 3);
-
         b.HasIndex(p => p.Name);
         b.HasIndex(p => p.InternalCode);
 

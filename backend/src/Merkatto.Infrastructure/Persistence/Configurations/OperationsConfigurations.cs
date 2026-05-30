@@ -12,7 +12,6 @@ public sealed class PurchaseItemConfiguration : IEntityTypeConfiguration<Purchas
     public void Configure(EntityTypeBuilder<PurchaseItem> b)
     {
         b.Property(i => i.PurchaseUnit).IsRequired().HasMaxLength(40);
-        b.Property(i => i.Quantity).HasPrecision(18, 3);
         b.HasOne(i => i.Product).WithMany().HasForeignKey(i => i.ProductId).OnDelete(DeleteBehavior.Restrict);
         b.Ignore(i => i.Subtotal);
         b.Ignore(i => i.QuantityInSaleUnits);
@@ -23,7 +22,6 @@ public sealed class StockMovementConfiguration : IEntityTypeConfiguration<StockM
 {
     public void Configure(EntityTypeBuilder<StockMovement> b)
     {
-        b.Property(m => m.Quantity).HasPrecision(18, 3);
         b.Property(m => m.MovementType).HasConversion<int>();
         b.Property(m => m.Location).HasConversion<int>();
         b.HasIndex(m => new { m.ProductId, m.OccurredAt });
@@ -35,7 +33,6 @@ public sealed class InventoryAdjustmentConfiguration : IEntityTypeConfiguration<
 {
     public void Configure(EntityTypeBuilder<InventoryAdjustment> b)
     {
-        b.Property(a => a.Quantity).HasPrecision(18, 3);
         b.Property(a => a.Type).HasConversion<int>();
         b.Property(a => a.Location).HasConversion<int>();
         b.HasOne(a => a.Product).WithMany().HasForeignKey(a => a.ProductId).OnDelete(DeleteBehavior.Restrict);
@@ -46,7 +43,6 @@ public sealed class DailyClosingConfiguration : IEntityTypeConfiguration<DailyCl
 {
     public void Configure(EntityTypeBuilder<DailyClosing> b)
     {
-        b.Property(c => c.PosCommissionRate).HasPrecision(6, 4);
         b.HasIndex(c => c.BusinessDate).IsUnique();
         b.Ignore(c => c.PosCommissionAmount);
         b.Ignore(c => c.GrossIncome);
@@ -87,7 +83,6 @@ public sealed class CreditConfigurations :
     public void Configure(EntityTypeBuilder<CreditSaleItem> b)
     {
         b.Property(i => i.Description).IsRequired().HasMaxLength(200);
-        b.Property(i => i.Quantity).HasPrecision(18, 3);
     }
 
     public void Configure(EntityTypeBuilder<CreditPayment> b)

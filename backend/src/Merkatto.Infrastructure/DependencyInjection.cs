@@ -20,11 +20,22 @@ public static class DependencyInjection
         services.AddScoped<AuditingInterceptor>();
         services.AddScoped<IReportService, ReportService>();
 
+        var provider = config.GetValue<string>("Database:Provider") ?? "Postgres";
+        var connectionString = config.GetConnectionString("Default")
+            ?? throw new InvalidOperationException("ConnectionStrings:Default is required.");
+
         services.AddDbContext<AppDbContext>((sp, options) =>
         {
-            options.UseNpgsql(config.GetConnectionString("Default"))
-                   .UseSnakeCaseNamingConvention()
-                   .AddInterceptors(sp.GetRequiredService<AuditingInterceptor>());
+            var interceptor = sp.GetRequiredService<AuditingInterceptor>();
+
+            if (provider.Equals("Sqlite", StringComparison.OrdinalIgnoreCase))
+                options.UseSqlite(connectionString)
+                       .UseSnakeCaseNamingConvention()
+                       .AddInterceptors(interceptor);
+            else
+                options.UseNpgsql(connectionString)
+                       .UseSnakeCaseNamingConvention()
+                       .AddInterceptors(interceptor);
         });
 
         services.AddScoped<IAppDbContext>(sp => sp.GetRequiredService<AppDbContext>());
