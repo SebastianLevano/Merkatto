@@ -1,9 +1,15 @@
 import { Routes } from '@angular/router';
 import { authGuard, mustChangePasswordGuard } from './core/auth/auth.guard';
+import { setupGuard } from './core/auth/setup.guard';
 
 export const routes: Routes = [
   {
+    path: 'setup',
+    loadComponent: () => import('./features/setup/setup').then((m) => m.Setup)
+  },
+  {
     path: 'login',
+    canActivate: [setupGuard],
     loadComponent: () => import('./features/login/login').then((m) => m.Login)
   },
   {
@@ -15,7 +21,7 @@ export const routes: Routes = [
   {
     path: '',
     loadComponent: () => import('./layout/shell').then((m) => m.Shell),
-    canActivate: [authGuard],
+    canActivate: [setupGuard, authGuard],
     children: [
       {
         path: '',

@@ -10,6 +10,7 @@ using Merkatto.Application.Nrus;
 using Merkatto.Application.Operations;
 using Merkatto.Application.Purchasing;
 using Merkatto.Application.Settings;
+using Merkatto.Application.Setup;
 using Merkatto.Application.Users;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -35,6 +36,7 @@ public static class DependencyInjection
         services.AddScoped<TimelineService>();
         services.AddScoped<SettingsService>();
         services.AddScoped<UserService>();
+        services.AddScoped<SetupService>();
         return services;
     }
 }

@@ -1,9 +1,11 @@
 using System.Net;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json;
 using System.Threading.RateLimiting;
 using Merkatto.Api.Auth;
 using Merkatto.Api.Common;
+using Merkatto.Api.Controllers;
 using Merkatto.Api.Filters;
 using Merkatto.Api.Middleware;
 using Merkatto.Application;
@@ -17,51 +19,42 @@ using Microsoft.IdentityModel.Tokens;
 using Photino.NET;
 
 // ── Data directory ──────────────────────────────────────────────────────────────
-// All persistent data lives outside the install directory so that Velopack
-// updates (which replace the app folder) never touch user data.
 // Windows → C:\ProgramData\Merkatto  (shared between all users on the PC)
-// macOS/Linux → ~/.local/share/Merkatto  (per-user, used only during dev)
+// macOS/Linux → ~/Library/Application Support/Merkatto  (per-user, dev only)
 var dataDir = OperatingSystem.IsWindows()
     ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "Merkatto")
     : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Merkatto");
 Directory.CreateDirectory(dataDir);
 
-// ── Stable JWT signing key (generated once, persisted to disk) ──────────────────
+// ── Auto-backup before touching the DB ──────────────────────────────────────────
+var dbPath = Path.Combine(dataDir, "merkatto.db");
+CreateStartupBackup(dataDir, dbPath);
+
+// ── client.json pre-fill (optional, placed next to the .exe at install time) ───
+var prefill = LoadClientJson();
+
+// ── Stable JWT signing key ───────────────────────────────────────────────────────
 var keyFile = Path.Combine(dataDir, "signing.key");
-string signingKey;
-if (File.Exists(keyFile))
-{
-    signingKey = File.ReadAllText(keyFile).Trim();
-}
-else
-{
-    signingKey = Convert.ToBase64String(RandomNumberGenerator.GetBytes(48));
-    File.WriteAllText(keyFile, signingKey);
-}
+var signingKey = File.Exists(keyFile)
+    ? File.ReadAllText(keyFile).Trim()
+    : GenerateAndSave(keyFile);
 
 // ── Pick a free port ─────────────────────────────────────────────────────────────
-// HTTP on localhost: WebView2 (Windows/prod) and WKWebView (macOS/dev) both treat
-// http://localhost as a secure context, so Secure cookies are honored.
-// HTTPS with a per-machine cert is deferred to the installer (Paso 4).
 var port = GetFreePort();
 var appUrl = $"http://localhost:{port}";
 
 // ── Web host setup ───────────────────────────────────────────────────────────────
 var builder = WebApplication.CreateBuilder(args);
 
-// Inject runtime config overrides before any other reads
 builder.Configuration
     .AddJsonFile("appsettings.json", optional: false)
     .AddEnvironmentVariables();
 
 builder.Configuration["Auth:SigningKey"] = signingKey;
-builder.Configuration["ConnectionStrings:Default"] =
-    $"Data Source={Path.Combine(dataDir, "merkatto.db")}";
+builder.Configuration["ConnectionStrings:Default"] = $"Data Source={dbPath}";
 
-builder.WebHost.ConfigureKestrel(options =>
-    options.Listen(IPAddress.Loopback, port));
+builder.WebHost.ConfigureKestrel(opts => opts.Listen(IPAddress.Loopback, port));
 
-// Same service registrations as Merkatto.Api — Desktop reuses all controllers and middleware
 var authSettings = builder.Configuration.GetSection(AuthSettings.SectionName).Get<AuthSettings>()
                    ?? new AuthSettings();
 
@@ -71,55 +64,53 @@ builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUser, HttpCurrentUser>();
 
-// Include controllers from Merkatto.Api (Desktop has none of its own)
+// Optional pre-fill from client.json (null if file not present)
+if (prefill is not null)
+    builder.Services.AddSingleton(prefill);
+
+// Manual backup trigger (registered as singleton so the Settings page can call it)
+builder.Services.AddSingleton(new BackupTrigger(() => CreateOnDemandBackup(dataDir, dbPath)));
+
 builder.Services.AddControllers(opts => opts.Filters.Add<ValidationFilter>())
-    .AddApplicationPart(typeof(Merkatto.Api.Controllers.AuthController).Assembly);
+    .AddApplicationPart(typeof(AuthController).Assembly);
 builder.Services.AddScoped<ValidationFilter>();
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-    .AddJwtBearer(options =>
+    .AddJwtBearer(opts =>
     {
-        options.TokenValidationParameters = new TokenValidationParameters
+        opts.TokenValidationParameters = new TokenValidationParameters
         {
-            ValidateIssuer = true,
-            ValidateAudience = true,
-            ValidateLifetime = true,
-            ValidateIssuerSigningKey = true,
-            ValidIssuer = authSettings.Issuer,
-            ValidAudience = authSettings.Audience,
-            IssuerSigningKey = new SymmetricSecurityKey(
-                Encoding.UTF8.GetBytes(authSettings.SigningKey)),
+            ValidateIssuer = true, ValidateAudience = true,
+            ValidateLifetime = true, ValidateIssuerSigningKey = true,
+            ValidIssuer = authSettings.Issuer, ValidAudience = authSettings.Audience,
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(authSettings.SigningKey)),
             ClockSkew = TimeSpan.FromSeconds(30)
         };
     });
 
-builder.Services.AddAuthorization(options =>
+builder.Services.AddAuthorization(opts =>
 {
-    options.AddPolicy("Administrator", p => p.RequireRole("Administrator"));
-    options.AddPolicy("Collaborator", p => p.RequireRole("Administrator", "Collaborator"));
+    opts.AddPolicy("Administrator", p => p.RequireRole("Administrator"));
+    opts.AddPolicy("Collaborator",  p => p.RequireRole("Administrator", "Collaborator"));
 });
 
-// No CORS needed — SPA and API share the same origin in desktop mode
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddProblemDetails();
-
-// Rate limiting (same as cloud, mostly a no-op locally but keeps the policy consistent)
-builder.Services.AddRateLimiter(options =>
+builder.Services.AddRateLimiter(opts =>
 {
-    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
-    options.AddPolicy("auth", httpContext =>
+    opts.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    opts.AddPolicy("auth", ctx =>
         RateLimitPartition.GetFixedWindowLimiter(
-            httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
-            _ => new FixedWindowRateLimiterOptions
-                { PermitLimit = 20, Window = TimeSpan.FromMinutes(1) }));
+            ctx.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            _ => new FixedWindowRateLimiterOptions { PermitLimit = 20, Window = TimeSpan.FromMinutes(1) }));
 });
 
 var app = builder.Build();
 
-// ── HTTP pipeline ────────────────────────────────────────────────────────────────
+// ── HTTP pipeline ─────────────────────────────────────────────────────────────
 app.UseExceptionHandler();
 app.UseMiddleware<SecurityHeadersMiddleware>();
-app.UseDefaultFiles(); // serves index.html for /
+app.UseDefaultFiles();
 app.UseStaticFiles();
 app.UseRateLimiter();
 app.UseAuthentication();
@@ -143,14 +134,11 @@ app.MapFallback(async (IWebHostEnvironment env, HttpContext ctx) =>
         ctx.Response.StatusCode = StatusCodes.Status404NotFound;
 });
 
-// ── DB initialisation (before accepting requests) ────────────────────────────────
+// ── DB initialisation ────────────────────────────────────────────────────────
 using (var scope = app.Services.CreateScope())
-{
-    var initializer = scope.ServiceProvider.GetRequiredService<DbInitializer>();
-    await initializer.RunAsync();
-}
+    await scope.ServiceProvider.GetRequiredService<DbInitializer>().RunAsync();
 
-// ── Start the web host, then open the Photino window ────────────────────────────
+// ── Start host + open Photino window ────────────────────────────────────────
 await app.StartAsync();
 
 var window = new PhotinoWindow()
@@ -160,16 +148,73 @@ var window = new PhotinoWindow()
     .SetDevToolsEnabled(false)
     .Load(new Uri(appUrl));
 
-window.WaitForClose(); // native message loop; blocks until user closes the window
-
+window.WaitForClose();
 await app.StopAsync();
 
-// ── Helpers ──────────────────────────────────────────────────────────────────────
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
 static int GetFreePort()
 {
     var listener = new System.Net.Sockets.TcpListener(IPAddress.Loopback, 0);
     listener.Start();
-    var port = ((IPEndPoint)listener.LocalEndpoint).Port;
+    var p = ((IPEndPoint)listener.LocalEndpoint).Port;
     listener.Stop();
-    return port;
+    return p;
+}
+
+static string GenerateAndSave(string path)
+{
+    var key = Convert.ToBase64String(RandomNumberGenerator.GetBytes(48));
+    File.WriteAllText(path, key);
+    return key;
+}
+
+static string CreateOnDemandBackup(string dataDir, string dbPath)
+{
+    var backupDir = Path.Combine(dataDir, "backups");
+    Directory.CreateDirectory(backupDir);
+    var stamp = DateTime.UtcNow.ToString("yyyyMMdd_HHmmss");
+    var dest = Path.Combine(backupDir, $"merkatto_{stamp}.db");
+    File.Copy(dbPath, dest, overwrite: true);
+    var wal = dbPath + "-wal";
+    if (File.Exists(wal)) File.Copy(wal, dest + "-wal", overwrite: true);
+    return dest;
+}
+
+static void CreateStartupBackup(string dataDir, string dbPath)
+{
+    if (!File.Exists(dbPath)) return;
+
+    var backupDir = Path.Combine(dataDir, "backups");
+    Directory.CreateDirectory(backupDir);
+
+    var stamp = DateTime.UtcNow.ToString("yyyyMMdd_HHmmss");
+    File.Copy(dbPath, Path.Combine(backupDir, $"merkatto_{stamp}.db"), overwrite: true);
+
+    // Also copy WAL so the backup is self-contained (SQLite replays it on open)
+    var walPath = dbPath + "-wal";
+    if (File.Exists(walPath))
+        File.Copy(walPath, Path.Combine(backupDir, $"merkatto_{stamp}.db-wal"), overwrite: true);
+
+    // Rotate: keep the 7 most-recent backups
+    foreach (var old in Directory.GetFiles(backupDir, "merkatto_*.db")
+                 .OrderByDescending(f => f).Skip(7))
+        File.Delete(old);
+}
+
+static SetupPrefill? LoadClientJson()
+{
+    var dir = AppContext.BaseDirectory;
+    var path = Path.Combine(dir, "client.json");
+    if (!File.Exists(path)) return null;
+
+    try
+    {
+        using var doc = JsonDocument.Parse(File.ReadAllText(path));
+        var root = doc.RootElement;
+        var biz   = root.TryGetProperty("businessName", out var b) ? b.GetString() : null;
+        var email = root.TryGetProperty("adminEmail",   out var e) ? e.GetString() : null;
+        return new SetupPrefill(biz, email);
+    }
+    catch { return null; }
 }
