@@ -102,12 +102,17 @@ app.UseAuthentication();
 app.UseMiddleware<MustChangePasswordMiddleware>();
 app.UseAuthorization();
 
+app.UseDefaultFiles(); // serves index.html for /
 app.UseStaticFiles();
 app.MapControllers();
-// SPA fallback: serve index.html for any non-/api route so Angular's router handles navigation.
-// /api/* routes that don't match a controller get 404 from the exception handler, not HTML.
-app.MapFallback("{*path:regex(^(?!api/).*$)}", async (IWebHostEnvironment env, HttpContext ctx) =>
+// SPA catch-all: Angular routes (non-/api) return index.html; unknown /api/* get 404.
+app.MapFallback(async (IWebHostEnvironment env, HttpContext ctx) =>
 {
+    if (ctx.Request.Path.StartsWithSegments("/api"))
+    {
+        ctx.Response.StatusCode = StatusCodes.Status404NotFound;
+        return;
+    }
     var indexPath = Path.Combine(env.WebRootPath ?? "", "index.html");
     if (File.Exists(indexPath))
     {

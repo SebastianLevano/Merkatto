@@ -39,9 +39,12 @@ else
     File.WriteAllText(keyFile, signingKey);
 }
 
-// ── Pick a free HTTPS port ───────────────────────────────────────────────────────
+// ── Pick a free port ─────────────────────────────────────────────────────────────
+// HTTP on localhost: WebView2 (Windows/prod) and WKWebView (macOS/dev) both treat
+// http://localhost as a secure context, so Secure cookies are honored.
+// HTTPS with a per-machine cert is deferred to the installer (Paso 4).
 var port = GetFreePort();
-var appUrl = $"https://localhost:{port}";
+var appUrl = $"http://localhost:{port}";
 
 // ── Web host setup ───────────────────────────────────────────────────────────────
 var builder = WebApplication.CreateBuilder(args);
@@ -55,11 +58,8 @@ builder.Configuration["Auth:SigningKey"] = signingKey;
 builder.Configuration["ConnectionStrings:Default"] =
     $"Data Source={Path.Combine(dataDir, "merkatto.db")}";
 
-// HTTPS on the chosen port using the ASP.NET developer certificate
-// (run `dotnet dev-certs https --trust` once on a new machine)
 builder.WebHost.ConfigureKestrel(options =>
-    options.Listen(IPAddress.Loopback, port,
-        listenOptions => listenOptions.UseHttps()));
+    options.Listen(IPAddress.Loopback, port));
 
 // Same service registrations as Merkatto.Api — Desktop reuses all controllers and middleware
 var authSettings = builder.Configuration.GetSection(AuthSettings.SectionName).Get<AuthSettings>()
@@ -119,14 +119,20 @@ var app = builder.Build();
 // ── HTTP pipeline ────────────────────────────────────────────────────────────────
 app.UseExceptionHandler();
 app.UseMiddleware<SecurityHeadersMiddleware>();
+app.UseDefaultFiles(); // serves index.html for /
 app.UseStaticFiles();
 app.UseRateLimiter();
 app.UseAuthentication();
 app.UseMiddleware<MustChangePasswordMiddleware>();
 app.UseAuthorization();
 app.MapControllers();
-app.MapFallback("{*path:regex(^(?!api/).*$)}", async (IWebHostEnvironment env, HttpContext ctx) =>
+app.MapFallback(async (IWebHostEnvironment env, HttpContext ctx) =>
 {
+    if (ctx.Request.Path.StartsWithSegments("/api"))
+    {
+        ctx.Response.StatusCode = StatusCodes.Status404NotFound;
+        return;
+    }
     var indexPath = Path.Combine(env.WebRootPath ?? "", "index.html");
     if (File.Exists(indexPath))
     {

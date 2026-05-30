@@ -63,7 +63,7 @@ public sealed class AuthController(AuthService auth) : ControllerBase
         Response.Cookies.Append(RefreshCookie, pair.RefreshToken, new CookieOptions
         {
             HttpOnly = true,
-            Secure = true,
+            Secure = Request.IsHttps, // true in cloud (HTTPS); false on http://localhost (desktop)
             SameSite = SameSiteMode.Strict,
             Expires = pair.RefreshTokenExpiresAt,
             Path = "/api/v1/auth"
