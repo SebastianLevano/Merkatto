@@ -113,6 +113,10 @@ export const routes: Routes = [
       {
         path: 'configuracion',
         loadComponent: () => import('./features/settings/settings').then((m) => m.Settings)
+      },
+      {
+        path: 'configuracion/usuarios',
+        loadComponent: () => import('./features/users/user-list').then((m) => m.UserList)
       }
     ]
   },
