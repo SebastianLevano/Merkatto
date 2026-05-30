@@ -72,7 +72,7 @@ public sealed class AuthService(
     {
         if (currentUser.UserId is not { } id) return null;
         var user = await db.Users.FirstOrDefaultAsync(u => u.Id == id, ct);
-        return user is null ? null : new UserDto(user.Id, user.Email, user.FullName, user.Role);
+        return user is null ? null : new UserDto(user.Id, user.Email, user.FullName, user.Role, user.MustChangePassword);
     }
 
     public async Task ChangePasswordAsync(ChangePasswordRequest request, CancellationToken ct)
@@ -90,6 +90,7 @@ public sealed class AuthService(
             throw new AuthException("La contraseña actual es incorrecta.");
 
         user.PasswordHash = passwordHasher.Hash(request.NewPassword);
+        user.MustChangePassword = false;
         await db.SaveChangesAsync(ct);
     }
 
@@ -108,7 +109,7 @@ public sealed class AuthService(
         });
 
         await Task.CompletedTask;
-        var dto = new UserDto(user.Id, user.Email, user.FullName, user.Role);
+        var dto = new UserDto(user.Id, user.Email, user.FullName, user.Role, user.MustChangePassword);
         return new TokenPair(access, accessExp, raw, refreshExp, dto);
     }
 

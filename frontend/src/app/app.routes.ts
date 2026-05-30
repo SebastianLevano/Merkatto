@@ -1,10 +1,16 @@
 import { Routes } from '@angular/router';
-import { authGuard } from './core/auth/auth.guard';
+import { authGuard, mustChangePasswordGuard } from './core/auth/auth.guard';
 
 export const routes: Routes = [
   {
     path: 'login',
     loadComponent: () => import('./features/login/login').then((m) => m.Login)
+  },
+  {
+    path: 'cambiar-contrasena',
+    canActivate: [mustChangePasswordGuard],
+    loadComponent: () =>
+      import('./features/login/force-password-change').then((m) => m.ForcePasswordChange)
   },
   {
     path: '',
@@ -107,6 +113,10 @@ export const routes: Routes = [
       {
         path: 'configuracion',
         loadComponent: () => import('./features/settings/settings').then((m) => m.Settings)
+      },
+      {
+        path: 'configuracion/usuarios',
+        loadComponent: () => import('./features/users/user-list').then((m) => m.UserList)
       }
     ]
   },

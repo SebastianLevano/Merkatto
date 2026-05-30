@@ -19,6 +19,7 @@ export class AuthService {
   readonly user = this._user.asReadonly();
   readonly isAuthenticated = computed(() => this._user() !== null);
   readonly isAdmin = computed(() => this._user()?.role === 1);
+  readonly mustChangePassword = computed(() => this._user()?.mustChangePassword === true);
 
   get accessToken(): string | null {
     return this._accessToken();

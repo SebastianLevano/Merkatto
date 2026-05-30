@@ -42,6 +42,7 @@ public sealed class DbInitializer(
             PasswordHash = hasher.Hash(seed.AdminPassword),
             Role = Role.Administrator,
             IsActive = true,
+            MustChangePassword = true,
             CreatedAt = clock.UtcNow,
             CreatedBy = "system"
         });

@@ -99,6 +99,7 @@ if (app.Environment.IsDevelopment())
 app.UseCors("spa");
 app.UseRateLimiter();
 app.UseAuthentication();
+app.UseMiddleware<MustChangePasswordMiddleware>();
 app.UseAuthorization();
 
 app.MapControllers();

@@ -25,6 +25,7 @@ public sealed class JwtTokenService(IOptions<AuthSettings> options) : ITokenServ
             new Claim(JwtRegisteredClaimNames.Email, user.Email),
             new Claim(ClaimTypes.Name, user.FullName),
             new Claim(ClaimTypes.Role, user.Role.ToString()),
+            new Claim("must_change_password", user.MustChangePassword ? "true" : "false"),
             new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
         };
 
