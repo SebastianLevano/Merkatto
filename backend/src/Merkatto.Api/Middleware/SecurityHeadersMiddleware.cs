@@ -19,10 +19,11 @@ public sealed class SecurityHeadersMiddleware(RequestDelegate next)
         else
         {
             // SPA: same-origin scripts/styles/fonts/images + no framing.
-            // 'unsafe-inline' on style-src is required by Angular's runtime style injection.
+            // 'unsafe-inline' on script-src covers Angular's <link onload="this.media='all'">
+            // pattern (async CSS loading emitted by the Angular CLI build optimizer).
             headers["Content-Security-Policy"] =
                 "default-src 'self'; " +
-                "script-src 'self'; " +
+                "script-src 'self' 'unsafe-inline'; " +
                 "style-src 'self' 'unsafe-inline'; " +
                 "img-src 'self' data:; " +
                 "font-src 'self'; " +
