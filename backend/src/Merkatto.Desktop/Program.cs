@@ -125,7 +125,17 @@ app.UseAuthentication();
 app.UseMiddleware<MustChangePasswordMiddleware>();
 app.UseAuthorization();
 app.MapControllers();
-app.MapFallbackToFile("index.html"); // SPA catch-all
+app.MapFallback("{*path:regex(^(?!api/).*$)}", async (IWebHostEnvironment env, HttpContext ctx) =>
+{
+    var indexPath = Path.Combine(env.WebRootPath ?? "", "index.html");
+    if (File.Exists(indexPath))
+    {
+        ctx.Response.ContentType = "text/html";
+        await ctx.Response.SendFileAsync(indexPath);
+    }
+    else
+        ctx.Response.StatusCode = StatusCodes.Status404NotFound;
+});
 
 // ── DB initialisation (before accepting requests) ────────────────────────────────
 using (var scope = app.Services.CreateScope())

@@ -104,7 +104,19 @@ app.UseAuthorization();
 
 app.UseStaticFiles();
 app.MapControllers();
-app.MapFallbackToFile("index.html");
+// SPA fallback: serve index.html for any non-/api route so Angular's router handles navigation.
+// /api/* routes that don't match a controller get 404 from the exception handler, not HTML.
+app.MapFallback("{*path:regex(^(?!api/).*$)}", async (IWebHostEnvironment env, HttpContext ctx) =>
+{
+    var indexPath = Path.Combine(env.WebRootPath ?? "", "index.html");
+    if (File.Exists(indexPath))
+    {
+        ctx.Response.ContentType = "text/html";
+        await ctx.Response.SendFileAsync(indexPath);
+    }
+    else
+        ctx.Response.StatusCode = StatusCodes.Status404NotFound;
+});
 
 // --- Apply migrations + seed admin on startup ---
 using (var scope = app.Services.CreateScope())
