@@ -27,11 +27,14 @@ public sealed class InventoryService(IAppDbContext db, IDateTimeProvider clock)
 
         var productIds = products.Select(p => p.Id).ToList();
         var window = clock.UtcNow.AddDays(-30);
-        var consumption = await db.StockMovements
-            .Where(m => productIds.Contains(m.ProductId) && m.Quantity < 0 && m.OccurredAt >= window)
+        // DateTimeOffset comparison can't be translated by the SQLite provider; materialize first.
+        var movements = await db.StockMovements
+            .Where(m => productIds.Contains(m.ProductId) && m.Quantity < 0)
+            .ToListAsync(ct);
+        var consumption = movements
+            .Where(m => m.OccurredAt >= window)
             .GroupBy(m => m.ProductId)
-            .Select(g => new { ProductId = g.Key, Total = -g.Sum(m => m.Quantity) })
-            .ToDictionaryAsync(x => x.ProductId, x => x.Total, ct);
+            .ToDictionary(g => g.Key, g => -g.Sum(m => m.Quantity));
 
         var rows = products
             .Select(p =>

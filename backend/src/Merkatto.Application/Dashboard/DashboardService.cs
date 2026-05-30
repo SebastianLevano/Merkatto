@@ -23,14 +23,17 @@ public sealed class DashboardService(IAppDbContext db, IDateTimeProvider clock, 
             .Where(p => p.IsActive && (p.WarehouseStock + p.CounterStock) <= p.MinStock)
             .CountAsync(ct);
 
-        var creditRows = await db.CreditCustomers
-            .Select(c => new
-            {
-                Sales = c.Sales.Sum(s => (decimal?)s.TotalAmount) ?? 0m,
-                Payments = c.Payments.Sum(p => (decimal?)p.Amount) ?? 0m
-            })
+        // Aggregate functions on decimal-with-converter columns don't apply the converter
+        // in SQLite projections. Materialize with navigation properties and compute in C#.
+        var customers = await db.CreditCustomers
+            .Include(c => c.Sales)
+            .Include(c => c.Payments)
             .ToListAsync(ct);
-
+        var creditRows = customers.Select(c => new
+        {
+            Sales = c.Sales.Sum(s => s.TotalAmount),
+            Payments = c.Payments.Sum(p => p.Amount)
+        }).ToList();
         var totalCredit = creditRows.Sum(r => r.Sales - r.Payments);
         var activeCustomers = creditRows.Count(r => r.Sales - r.Payments > 0);
 

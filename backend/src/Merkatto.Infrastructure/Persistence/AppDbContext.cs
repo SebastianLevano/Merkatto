@@ -10,6 +10,7 @@ using Merkatto.Domain.Operations;
 using Merkatto.Domain.Purchasing;
 using Merkatto.Infrastructure.Persistence.Converters;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 namespace Merkatto.Infrastructure.Persistence;
 
@@ -59,6 +60,29 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
                 .Property(a => a.OldValues).HasColumnType("jsonb");
             modelBuilder.Entity<AuditLog>()
                 .Property(a => a.NewValues).HasColumnType("jsonb");
+        }
+
+        // SQLite rejects DateTimeOffset in ORDER BY and WHERE clauses.
+        // Map all DateTimeOffset properties to long (UTC ticks) so SQLite can sort/compare them.
+        if (Database.IsSqlite())
+        {
+            var dtoConverter = new ValueConverter<DateTimeOffset, long>(
+                v => v.UtcTicks,
+                v => new DateTimeOffset(v, TimeSpan.Zero));
+            var dtoNullConverter = new ValueConverter<DateTimeOffset?, long?>(
+                v => v == null ? null : v.Value.UtcTicks,
+                v => v == null ? null : new DateTimeOffset(v.Value, TimeSpan.Zero));
+
+            foreach (var entityType in modelBuilder.Model.GetEntityTypes())
+            {
+                foreach (var property in entityType.GetProperties())
+                {
+                    if (property.ClrType == typeof(DateTimeOffset))
+                        property.SetValueConverter(dtoConverter);
+                    else if (property.ClrType == typeof(DateTimeOffset?))
+                        property.SetValueConverter(dtoNullConverter);
+                }
+            }
         }
 
         // Soft-delete: hide deleted rows automatically for every ISoftDelete entity.
