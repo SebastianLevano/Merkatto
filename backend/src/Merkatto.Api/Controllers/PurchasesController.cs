@@ -18,7 +18,7 @@ public sealed class PurchasesController(PurchaseService purchases) : ControllerB
     public Task<PurchaseDetail> Get(long id, CancellationToken ct) => purchases.GetByIdAsync(id, ct);
 
     [HttpPost]
-    [Authorize(Policy = "Administrator")]
+    [Authorize(Policy = "Collaborator")]
     public async Task<ActionResult> Create(CreatePurchaseRequest request, CancellationToken ct)
     {
         var id = await purchases.CreateAsync(request, ct);
@@ -26,7 +26,7 @@ public sealed class PurchasesController(PurchaseService purchases) : ControllerB
     }
 
     [HttpPut("{id:long}")]
-    [Authorize(Policy = "Administrator")]
+    [Authorize(Policy = "Collaborator")]
     public async Task<IActionResult> Update(long id, CreatePurchaseRequest request, CancellationToken ct)
     {
         await purchases.UpdateAsync(id, request, ct);
@@ -51,7 +51,7 @@ public sealed class SuppliersController(SupplierService suppliers) : ControllerB
     public Task<IReadOnlyList<SupplierItem>> List(CancellationToken ct) => suppliers.GetAsync(ct);
 
     [HttpPost]
-    [Authorize(Policy = "Administrator")]
+    [Authorize(Policy = "Collaborator")]
     public async Task<ActionResult> Create(SaveSupplierRequest request, CancellationToken ct)
     {
         var id = await suppliers.CreateAsync(request, ct);
@@ -59,7 +59,7 @@ public sealed class SuppliersController(SupplierService suppliers) : ControllerB
     }
 
     [HttpPut("{id:long}")]
-    [Authorize(Policy = "Administrator")]
+    [Authorize(Policy = "Collaborator")]
     public async Task<IActionResult> Update(long id, SaveSupplierRequest request, CancellationToken ct)
     {
         await suppliers.UpdateAsync(id, request, ct);

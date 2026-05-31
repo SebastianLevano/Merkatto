@@ -6,12 +6,10 @@
     <h1 class="text-xl font-semibold text-slate-900">Productos</h1>
     <p class="mt-1 text-sm text-slate-500">{{ total() }} producto(s) en el catálogo</p>
   </div>
-  @if (isAdmin()) {
-    <a routerLink="/inventario/nuevo"
-       class="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800">
-      Nuevo producto
-    </a>
-  }
+  <a routerLink="/inventario/nuevo"
+     class="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800">
+    Nuevo producto
+  </a>
 </div>
 
 <!-- Filters -->
@@ -55,14 +53,12 @@
           <td class="px-4 py-3 text-slate-600">{{ p.categoryName }}</td>
           <td class="px-4 py-3 text-right text-slate-700">S/ {{ p.unitCost | number: '1.2-2' }}</td>
           <td class="px-4 py-3 text-right whitespace-nowrap">
+            <a [routerLink]="['/inventario', p.id]" class="text-slate-500 hover:text-slate-900">Editar</a>
+            <button (click)="toggleActive(p)" class="ml-3 text-slate-400 hover:text-slate-700 text-xs">
+              {{ p.isActive ? 'Desactivar' : 'Activar' }}
+            </button>
             @if (isAdmin()) {
-              <a [routerLink]="['/inventario', p.id]" class="text-slate-500 hover:text-slate-900">Editar</a>
-              <button (click)="toggleActive(p)" class="ml-3 text-slate-400 hover:text-slate-700 text-xs">
-                {{ p.isActive ? 'Desactivar' : 'Activar' }}
-              </button>
               <button (click)="askDelete(p)" class="ml-3 text-red-500 hover:text-red-700">Eliminar</button>
-            } @else {
-              <span class="text-slate-300">—</span>
             }
           </td>
         </tr>

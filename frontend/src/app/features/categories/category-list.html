@@ -5,7 +5,7 @@
     <h1 class="text-xl font-semibold text-slate-900">Categorías</h1>
     <p class="mt-1 text-sm text-slate-500">{{ categories().length }} categoría(s) en el catálogo</p>
   </div>
-  @if (isAdmin() && !creating()) {
+  @if (!creating()) {
     <button (click)="openCreate()"
             class="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800">
       Nueva categoría
@@ -60,11 +60,11 @@
               <button (click)="cancelEdit()" class="ml-3 text-sm text-slate-500 hover:text-slate-700">
                 Cancelar
               </button>
-            } @else if (isAdmin()) {
-              <button (click)="startEdit(c)" class="text-sm text-slate-500 hover:text-slate-900">Renombrar</button>
-              <button (click)="askDelete(c)" class="ml-3 text-sm text-red-500 hover:text-red-700">Eliminar</button>
             } @else {
-              <span class="text-slate-300">—</span>
+              <button (click)="startEdit(c)" class="text-sm text-slate-500 hover:text-slate-900">Renombrar</button>
+              @if (isAdmin()) {
+                <button (click)="askDelete(c)" class="ml-3 text-sm text-red-500 hover:text-red-700">Eliminar</button>
+              }
             }
           </td>
         </tr>

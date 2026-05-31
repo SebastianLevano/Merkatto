@@ -13,7 +13,7 @@ public sealed class CategoriesController(CategoryBrandService service) : Control
     public Task<IReadOnlyList<LookupItem>> List(CancellationToken ct) => service.GetCategoriesAsync(ct);
 
     [HttpPost]
-    [Authorize(Policy = "Administrator")]
+    [Authorize(Policy = "Collaborator")]
     public async Task<ActionResult> Create(NameRequest request, CancellationToken ct)
     {
         var id = await service.CreateCategoryAsync(request, ct);
@@ -21,7 +21,7 @@ public sealed class CategoriesController(CategoryBrandService service) : Control
     }
 
     [HttpPut("{id:long}")]
-    [Authorize(Policy = "Administrator")]
+    [Authorize(Policy = "Collaborator")]
     public async Task<IActionResult> Update(long id, NameRequest request, CancellationToken ct)
     {
         await service.UpdateCategoryAsync(id, request, ct);
