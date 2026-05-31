@@ -94,7 +94,7 @@ ASPNETCORE_ENVIRONMENT=Development dotnet run --project src/Merkatto.Desktop
 
 # La ventana abre en http://localhost:{puerto-aleatorio}
 # Si la BD está vacía → aparece el wizard de primer arranque
-# Credenciales dev (appsettings.Development.json): admin@desktop.local / Admin123$
+# Credenciales dev (appsettings.Development.json): admin@sistema.pe / Admin123$
 ```
 
 Datos persistidos en `~/Library/Application Support/Merkatto/` (macOS) o
