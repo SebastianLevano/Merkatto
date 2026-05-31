@@ -1,8 +1,10 @@
+using System.Diagnostics;
 using System.Net;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Threading.RateLimiting;
+using Merkatto.Application.Reports;
 using Merkatto.Api.Auth;
 using Merkatto.Api.Common;
 using Merkatto.Api.Controllers;
@@ -127,6 +129,44 @@ app.UseAuthentication();
 app.UseMiddleware<MustChangePasswordMiddleware>();
 app.UseAuthorization();
 app.MapControllers();
+
+// Desktop-only: open report file in the native OS application
+app.MapGet("/api/v1/reports/{type}/open", async (
+    string type, int? year, int? month, IReportService reports, CancellationToken ct) =>
+{
+    var today = DateTime.UtcNow;
+    var y = year ?? today.Year;
+    var m = month ?? today.Month;
+
+    byte[] data;
+    string filename;
+    switch (type)
+    {
+        case "closings":
+            data = await reports.ClosingsPdfAsync(y, m, ct);
+            filename = $"cierres_{y}_{m:D2}.pdf";
+            break;
+        case "expenses":
+            data = await reports.ExpensesExcelAsync(y, m, ct);
+            filename = $"gastos_{y}_{m:D2}.xlsx";
+            break;
+        case "purchases":
+            data = await reports.PurchasesExcelAsync(y, m, ct);
+            filename = $"compras_{y}_{m:D2}.xlsx";
+            break;
+        default:
+            return Results.NotFound();
+    }
+
+    var path = Path.Combine(Path.GetTempPath(), filename);
+    await File.WriteAllBytesAsync(path, data, ct);
+    Process.Start(new ProcessStartInfo { FileName = path, UseShellExecute = true });
+    return Results.NoContent();
+}).RequireAuthorization();
+
+// Desktop-only: capability flag consumed by the frontend on startup
+app.MapGet("/api/v1/app/mode", () => Results.Ok(new { desktop = true }));
+
 app.MapFallback(async (IWebHostEnvironment env, HttpContext ctx) =>
 {
     if (ctx.Request.Path.StartsWithSegments("/api"))

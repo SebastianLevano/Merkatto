@@ -1,31 +1,39 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
+import { switchMap, tap } from 'rxjs/operators';
 import { environment } from '../../../environments/environment';
+import { DesktopService } from '../../core/desktop.service';
 
 @Injectable({ providedIn: 'root' })
 export class ReportsService {
   private readonly http = inject(HttpClient);
+  private readonly desktop = inject(DesktopService);
   private readonly api = environment.apiUrl;
 
   downloadClosingsPdf(year: number, month: number): void {
-    const params = new HttpParams().set('year', year).set('month', month);
-    this.http
-      .get(`${this.api}/reports/closings`, { params, responseType: 'blob' })
-      .subscribe((blob) => this.triggerDownload(blob, `cierres-${year}-${String(month).padStart(2, '0')}.pdf`));
+    this.download('closings', year, month, `cierres-${year}-${String(month).padStart(2, '0')}.pdf`);
   }
 
   downloadExpensesExcel(year: number, month: number): void {
-    const params = new HttpParams().set('year', year).set('month', month);
-    this.http
-      .get(`${this.api}/reports/expenses`, { params, responseType: 'blob' })
-      .subscribe((blob) => this.triggerDownload(blob, `gastos-${year}-${String(month).padStart(2, '0')}.xlsx`));
+    this.download('expenses', year, month, `gastos-${year}-${String(month).padStart(2, '0')}.xlsx`);
   }
 
   downloadPurchasesExcel(year: number, month: number): void {
+    this.download('purchases', year, month, `compras-${year}-${String(month).padStart(2, '0')}.xlsx`);
+  }
+
+  private download(type: string, year: number, month: number, filename: string): void {
     const params = new HttpParams().set('year', year).set('month', month);
-    this.http
-      .get(`${this.api}/reports/purchases`, { params, responseType: 'blob' })
-      .subscribe((blob) => this.triggerDownload(blob, `compras-${year}-${String(month).padStart(2, '0')}.xlsx`));
+    this.desktop.isDesktop().pipe(
+      switchMap(isDesktop => {
+        if (isDesktop) {
+          return this.http.get(`${this.api}/reports/${type}/open`, { params });
+        }
+        return this.http.get(`${this.api}/reports/${type}`, { params, responseType: 'blob' }).pipe(
+          tap(blob => this.triggerDownload(blob, filename)),
+        );
+      }),
+    ).subscribe();
   }
 
   private triggerDownload(blob: Blob, filename: string): void {
@@ -33,7 +41,9 @@ export class ReportsService {
     const a = document.createElement('a');
     a.href = url;
     a.download = filename;
+    document.body.appendChild(a);
     a.click();
-    URL.revokeObjectURL(url);
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
 }
