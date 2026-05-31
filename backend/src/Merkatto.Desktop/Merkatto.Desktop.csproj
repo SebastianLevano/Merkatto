@@ -30,4 +30,14 @@
     <Content Update="wwwroot\**" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
+  <!-- Drop appsettings pulled in from Merkatto.Api before the duplicate-file
+       check runs — Desktop has its own copies that must win. -->
+  <Target Name="RemoveApiAppsettingsFromPublish" AfterTargets="ComputeFilesToPublish">
+    <ItemGroup>
+      <ResolvedFileToPublish Remove="@(ResolvedFileToPublish)"
+        Condition="('%(RelativePath)' == 'appsettings.json' Or '%(RelativePath)' == 'appsettings.Development.json')
+                   And $([System.String]::Copy('%(Identity)').Contains('Merkatto.Api'))" />
+    </ItemGroup>
+  </Target>
+
 </Project>
