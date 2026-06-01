@@ -28,6 +28,9 @@
 
   <ItemGroup>
     <Content Update="wwwroot\**" CopyToOutputDirectory="PreserveNewest" />
+    <!-- client.json is per-install config (centralBaseUrl, mode). It must NOT be baked into
+         the published bundle — each deployment gets its own copy placed next to the exe. -->
+    <Content Remove="client.json" />
   </ItemGroup>
 
   <!-- Drop appsettings pulled in from Merkatto.Api before the duplicate-file
