@@ -14,7 +14,7 @@
       <span class="text-lg font-semibold tracking-tight text-slate-900">Merkatto</span>
     </div>
     <nav class="flex-1 space-y-1 overflow-y-auto px-3">
-      @for (item of nav; track item.path) {
+      @for (item of nav(); track item.path) {
         <a
           [routerLink]="item.path"
           routerLinkActive="bg-slate-100 text-slate-900"

@@ -28,6 +28,7 @@ export class UserList {
   protected createFullName = '';
   protected createRole: Role = 2;
   protected createPassword = '';
+  protected createBusinessName = '';
 
   // Edit dialog
   protected readonly showEdit = signal(false);
@@ -37,6 +38,7 @@ export class UserList {
   protected editFullName = '';
   protected editRole: Role = 2;
   protected editIsActive = true;
+  protected editBusinessName = '';
 
   // Reset password dialog
   protected readonly showReset = signal(false);
@@ -70,6 +72,7 @@ export class UserList {
     this.createFullName = '';
     this.createRole = 2;
     this.createPassword = '';
+    this.createBusinessName = '';
     this.createError.set(null);
     this.showCreate.set(true);
   }
@@ -85,13 +88,18 @@ export class UserList {
       this.createError.set('La contraseña debe tener al menos 8 caracteres.');
       return;
     }
+    if (this.createRole === 2 && !this.createBusinessName.trim()) {
+      this.createError.set('Indicá el nombre del negocio del encargado.');
+      return;
+    }
     this.creating.set(true);
     this.service
       .create({
         email: this.createEmail.trim(),
         fullName: this.createFullName.trim(),
         role: this.createRole,
-        password: this.createPassword
+        password: this.createPassword,
+        businessName: this.createRole === 2 ? this.createBusinessName.trim() : null
       })
       .subscribe({
         next: () => {
@@ -112,6 +120,7 @@ export class UserList {
     this.editFullName = user.fullName;
     this.editRole = user.role;
     this.editIsActive = user.isActive;
+    this.editBusinessName = user.businessName ?? '';
     this.editError.set(null);
     this.showEdit.set(true);
   }
@@ -123,12 +132,17 @@ export class UserList {
       this.editError.set('El nombre no puede estar vacío.');
       return;
     }
+    if (this.editRole === 2 && !this.editBusinessName.trim()) {
+      this.editError.set('Indicá el nombre del negocio del encargado.');
+      return;
+    }
     this.saving.set(true);
     this.service
       .update(this.editingUser.id, {
         fullName: this.editFullName.trim(),
         role: this.editRole,
-        isActive: this.editIsActive
+        isActive: this.editIsActive,
+        businessName: this.editRole === 2 ? this.editBusinessName.trim() : null
       })
       .subscribe({
         next: () => {

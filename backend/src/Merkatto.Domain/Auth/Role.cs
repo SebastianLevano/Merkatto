@@ -1,8 +1,8 @@
 namespace Merkatto.Domain.Auth;
 
-/// <summary>System roles. Administrator manages everything; Collaborator handles daily operations.</summary>
+/// <summary>System roles. Administrator manages users (system owner); Encargado runs a bodega's daily operations.</summary>
 public enum Role
 {
     Administrator = 1,
-    Collaborator = 2
+    Encargado = 2
 }

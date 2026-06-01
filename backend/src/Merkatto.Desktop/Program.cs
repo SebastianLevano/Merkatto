@@ -14,6 +14,7 @@ using Merkatto.Application;
 using Merkatto.Application.Auth;
 using Merkatto.Application.Common;
 using Merkatto.Infrastructure;
+using Merkatto.Infrastructure.Auth;
 using Merkatto.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.RateLimiting;
@@ -25,6 +26,28 @@ using Velopack;
 // Handles install/uninstall/update hooks sent by the Velopack runtime.
 // If this is a special hook invocation, Run() exits the process immediately.
 VelopackApp.Build().Run();
+
+// ── client.json (optional, placed next to the .exe at install time) ───────────────
+var client = LoadClientJson();
+
+// ── Admin mode: just a window onto the central console ────────────────────────────
+// In "admin" mode this is the system administrator's machine: no local database, no
+// operations host — only a Photino window pointed at the central server, where the
+// Administrator role sees just user management. Requires the central URL + internet.
+if (string.Equals(client.Mode, "admin", StringComparison.OrdinalIgnoreCase))
+{
+    if (string.IsNullOrWhiteSpace(client.CentralBaseUrl))
+        throw new InvalidOperationException("Admin mode requires 'centralBaseUrl' in client.json.");
+
+    new PhotinoWindow()
+        .SetTitle("Merkatto — Administración")
+        .SetUseOsDefaultSize(true)
+        .SetContextMenuEnabled(false)
+        .SetDevToolsEnabled(false)
+        .Load(new Uri(client.CentralBaseUrl))
+        .WaitForClose();
+    return;
+}
 
 // ── Data directory ──────────────────────────────────────────────────────────────
 // Windows → C:\ProgramData\Merkatto  (shared between all users on the PC)
@@ -38,8 +61,10 @@ Directory.CreateDirectory(dataDir);
 var dbPath = Path.Combine(dataDir, "merkatto.db");
 CreateStartupBackup(dataDir, dbPath);
 
-// ── client.json pre-fill (optional, placed next to the .exe at install time) ───
-var prefill = LoadClientJson();
+// ── Optional setup pre-fill from client.json ──────────────────────────────────────
+var prefill = (client.BusinessName is not null || client.AdminEmail is not null)
+    ? new SetupPrefill(client.BusinessName, client.AdminEmail)
+    : null;
 
 // ── Stable JWT signing key ───────────────────────────────────────────────────────
 var keyFile = Path.Combine(dataDir, "signing.key");
@@ -60,6 +85,8 @@ builder.Configuration
 
 builder.Configuration["Auth:SigningKey"] = signingKey;
 builder.Configuration["ConnectionStrings:Default"] = $"Data Source={dbPath}";
+if (!string.IsNullOrWhiteSpace(client.CentralBaseUrl))
+    builder.Configuration["Central:BaseUrl"] = client.CentralBaseUrl;
 
 builder.WebHost.ConfigureKestrel(opts => opts.Listen(IPAddress.Loopback, port));
 
@@ -75,6 +102,17 @@ builder.Services.AddScoped<ICurrentUser, HttpCurrentUser>();
 // Optional pre-fill from client.json (null if file not present)
 if (prefill is not null)
     builder.Services.AddSingleton(prefill);
+
+// Central identity server: when configured, login validates against it (with offline cache).
+var centralBaseUrl = builder.Configuration["Central:BaseUrl"];
+if (!string.IsNullOrWhiteSpace(centralBaseUrl))
+{
+    builder.Services.AddHttpClient<ICentralAuthClient, HttpCentralAuthClient>(c =>
+    {
+        c.BaseAddress = new Uri(centralBaseUrl);
+        c.Timeout = TimeSpan.FromSeconds(4);
+    });
+}
 
 // Manual backup trigger
 builder.Services.AddSingleton(new BackupTrigger(() => CreateOnDemandBackup(dataDir, dbPath)));
@@ -103,7 +141,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 builder.Services.AddAuthorization(opts =>
 {
     opts.AddPolicy("Administrator", p => p.RequireRole("Administrator"));
-    opts.AddPolicy("Collaborator",  p => p.RequireRole("Administrator", "Collaborator"));
+    opts.AddPolicy("Encargado",  p => p.RequireRole("Administrator", "Encargado"));
 });
 
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
@@ -290,19 +328,20 @@ static void CreateStartupBackup(string dataDir, string dbPath)
         File.Delete(old);
 }
 
-static SetupPrefill? LoadClientJson()
+static ClientConfig LoadClientJson()
 {
-    var dir = AppContext.BaseDirectory;
-    var path = Path.Combine(dir, "client.json");
-    if (!File.Exists(path)) return null;
+    var path = Path.Combine(AppContext.BaseDirectory, "client.json");
+    if (!File.Exists(path)) return new ClientConfig(null, null, null, null);
 
     try
     {
         using var doc = JsonDocument.Parse(File.ReadAllText(path));
         var root = doc.RootElement;
-        var biz   = root.TryGetProperty("businessName", out var b) ? b.GetString() : null;
-        var email = root.TryGetProperty("adminEmail",   out var e) ? e.GetString() : null;
-        return new SetupPrefill(biz, email);
+        string? Get(string name) => root.TryGetProperty(name, out var v) ? v.GetString() : null;
+        return new ClientConfig(Get("businessName"), Get("adminEmail"), Get("centralBaseUrl"), Get("mode"));
     }
-    catch { return null; }
+    catch { return new ClientConfig(null, null, null, null); }
 }
+
+/// <summary>Per-install configuration shipped alongside the executable.</summary>
+internal sealed record ClientConfig(string? BusinessName, string? AdminEmail, string? CentralBaseUrl, string? Mode);

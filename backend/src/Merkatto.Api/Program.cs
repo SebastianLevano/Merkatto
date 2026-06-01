@@ -60,7 +60,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 builder.Services.AddAuthorization(options =>
 {
     options.AddPolicy("Administrator", p => p.RequireRole("Administrator"));
-    options.AddPolicy("Collaborator", p => p.RequireRole("Administrator", "Collaborator"));
+    options.AddPolicy("Encargado", p => p.RequireRole("Administrator", "Encargado"));
 });
 
 // --- Rate limiting (stricter on auth) ---

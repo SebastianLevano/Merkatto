@@ -23,7 +23,10 @@ public sealed class DbInitializer(
     {
         // SQLite has no provider-specific migrations; EnsureCreated builds the schema from the model.
         if (db.Database.IsSqlite())
+        {
             await db.Database.EnsureCreatedAsync(ct);
+            await EnsureSqliteSchemaUpToDateAsync(ct);
+        }
         else
             await db.Database.MigrateAsync(ct);
 
@@ -73,6 +76,28 @@ public sealed class DbInitializer(
 
         await db.SaveChangesAsync(ct);
         logger.LogInformation("Seeded {Count} default categories.", defaults.Length);
+    }
+
+    /// <summary>
+    /// EnsureCreated never alters an existing SQLite schema, so installs created before a new
+    /// column was added would be missing it. Add columns idempotently here. Postgres handles this
+    /// via EF migrations instead.
+    /// </summary>
+    private async Task EnsureSqliteSchemaUpToDateAsync(CancellationToken ct)
+    {
+        if (!await SqliteColumnExistsAsync("users", "business_name", ct))
+            await db.Database.ExecuteSqlRawAsync(
+                "ALTER TABLE users ADD COLUMN business_name TEXT NULL", ct);
+    }
+
+    private async Task<bool> SqliteColumnExistsAsync(string table, string column, CancellationToken ct)
+    {
+        await using var conn = db.Database.GetDbConnection();
+        await conn.OpenAsync(ct);
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = $"SELECT COUNT(*) FROM pragma_table_info('{table}') WHERE name = '{column}'";
+        var result = await cmd.ExecuteScalarAsync(ct);
+        return Convert.ToInt64(result) > 0;
     }
 
     private async Task SeedBusinessNameAsync(CancellationToken ct)

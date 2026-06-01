@@ -1,5 +1,6 @@
 import { Routes } from '@angular/router';
 import { authGuard, mustChangePasswordGuard } from './core/auth/auth.guard';
+import { adminOnlyGuard, operatorGuard } from './core/auth/role.guard';
 import { setupGuard } from './core/auth/setup.guard';
 
 export const routes: Routes = [
@@ -23,6 +24,17 @@ export const routes: Routes = [
     loadComponent: () => import('./layout/shell').then((m) => m.Shell),
     canActivate: [setupGuard, authGuard],
     children: [
+      // Admin-only: user management (the only screen the system Administrator sees).
+      {
+        path: 'configuracion/usuarios',
+        canActivate: [adminOnlyGuard],
+        loadComponent: () => import('./features/users/user-list').then((m) => m.UserList)
+      },
+      // Operational routes: the bodega Encargado only. Admins are bounced to user management.
+      {
+        path: '',
+        canActivateChild: [operatorGuard],
+        children: [
       {
         path: '',
         loadComponent: () => import('./features/dashboard/dashboard').then((m) => m.Dashboard)
@@ -119,10 +131,8 @@ export const routes: Routes = [
       {
         path: 'configuracion',
         loadComponent: () => import('./features/settings/settings').then((m) => m.Settings)
-      },
-      {
-        path: 'configuracion/usuarios',
-        loadComponent: () => import('./features/users/user-list').then((m) => m.UserList)
+      }
+        ]
       }
     ]
   },

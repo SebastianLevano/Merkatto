@@ -95,18 +95,39 @@ El cliente **nunca necesita hacer nada manualmente**. La actualización se aplic
 5. El cliente completa su email y contraseña temporal
 6. Listo
 
-### client.json (opcional, para pre-rellenar el wizard)
+### client.json (opcional, configuración por instalación)
 
-Podés dejar un `client.json` junto al `.exe` del instalador para pre-rellenar:
+Se deja un `client.json` junto al `.exe` del instalador. Todos los campos son opcionales.
 
+Campos:
+- `businessName`, `adminEmail` — pre-rellenan el wizard de primer arranque (instalación standalone).
+- `centralBaseUrl` — URL del servidor central de identidad. Si está presente, el **login del
+  Encargado** se valida contra el central la primera vez y luego se cachea para trabajar offline.
+  Sin este campo, la instalación autentica solo localmente (standalone).
+- `mode` — `"bodega"` (default) o `"admin"`.
+
+**Sabor bodega** (lo recibe cada Encargado):
 ```json
 {
-  "businessName": "Bodega Martita",
-  "adminEmail": "martita@gmail.com"
+  "centralBaseUrl": "https://central.tudominio.pe",
+  "businessName": "Bodega Doña Rosa"
 }
 ```
+El Encargado entra con el email/contraseña que el administrador creó en el central. La instalación
+queda atada a ese Encargado (otro usuario, o un Administrador, es rechazado).
 
-Copiarlo a la carpeta de instalación (`%LocalAppData%\Merkatto\app-1.0.0\`) después de instalar.
+**Sabor admin** (lo usás vos, el administrador del sistema):
+```json
+{
+  "mode": "admin",
+  "centralBaseUrl": "https://central.tudominio.pe"
+}
+```
+En modo admin la app **no** levanta base de datos local ni operación: es una ventana al panel
+central donde gestionás usuarios (crear/editar/resetear/desactivar). Requiere internet.
+
+Copiar el `client.json` a la carpeta de instalación (`%LocalAppData%\Merkatto\app-1.0.0\`) después
+de instalar.
 
 ---
 

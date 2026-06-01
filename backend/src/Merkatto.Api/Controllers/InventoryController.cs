@@ -21,7 +21,7 @@ public sealed class InventoryController(InventoryService inventory) : Controller
         inventory.GetMovementsAsync(productId, query, ct);
 
     [HttpPost("transfers")]
-    [Authorize(Policy = "Collaborator")]
+    [Authorize(Policy = "Encargado")]
     public async Task<IActionResult> Transfer(TransferRequest request, CancellationToken ct)
     {
         await inventory.TransferAsync(request, ct);
@@ -29,7 +29,7 @@ public sealed class InventoryController(InventoryService inventory) : Controller
     }
 
     [HttpPost("adjustments")]
-    [Authorize(Policy = "Collaborator")]
+    [Authorize(Policy = "Encargado")]
     public async Task<IActionResult> Adjust(AdjustmentRequest request, CancellationToken ct)
     {
         await inventory.AdjustAsync(request, ct);
@@ -37,7 +37,7 @@ public sealed class InventoryController(InventoryService inventory) : Controller
     }
 
     [HttpPost("batch-count")]
-    [Authorize(Policy = "Collaborator")]
+    [Authorize(Policy = "Encargado")]
     public async Task<IActionResult> BatchCount(BatchCountRequest request, CancellationToken ct)
     {
         await inventory.BatchCountAsync(request, ct);

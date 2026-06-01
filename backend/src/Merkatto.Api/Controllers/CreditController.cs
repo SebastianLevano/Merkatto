@@ -22,7 +22,7 @@ public sealed class CreditController(CreditService credit) : ControllerBase
         Ok(new { balance = await credit.GetBalanceAsync(id, ct) });
 
     [HttpPost("customers")]
-    [Authorize(Policy = "Collaborator")]
+    [Authorize(Policy = "Encargado")]
     public async Task<ActionResult> CreateCustomer(SaveCustomerRequest request, CancellationToken ct)
     {
         var id = await credit.CreateCustomerAsync(request, ct);
@@ -30,7 +30,7 @@ public sealed class CreditController(CreditService credit) : ControllerBase
     }
 
     [HttpPost("sales")]
-    [Authorize(Policy = "Collaborator")]
+    [Authorize(Policy = "Encargado")]
     public async Task<ActionResult> AddSale(CreateCreditSaleRequest request, CancellationToken ct)
     {
         var id = await credit.AddSaleAsync(request, ct);
@@ -38,7 +38,7 @@ public sealed class CreditController(CreditService credit) : ControllerBase
     }
 
     [HttpPost("payments")]
-    [Authorize(Policy = "Collaborator")]
+    [Authorize(Policy = "Encargado")]
     public async Task<ActionResult> AddPayment(CreatePaymentRequest request, CancellationToken ct)
     {
         var id = await credit.AddPaymentAsync(request, ct);

@@ -13,6 +13,7 @@ public sealed class UserConfiguration : IEntityTypeConfiguration<User>
         b.Property(u => u.FullName).IsRequired().HasMaxLength(160);
         b.Property(u => u.PasswordHash).IsRequired();
         b.Property(u => u.Role).HasConversion<int>();
+        b.Property(u => u.BusinessName).HasMaxLength(120);
 
         b.HasMany(u => u.RefreshTokens)
             .WithOne(rt => rt.User)

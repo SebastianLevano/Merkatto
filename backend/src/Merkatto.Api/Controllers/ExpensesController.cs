@@ -26,7 +26,7 @@ public sealed class ExpensesController(ExpenseService expenses) : ControllerBase
     public Task<ExpenseItem> Get(long id, CancellationToken ct) => expenses.GetByIdAsync(id, ct);
 
     [HttpPost]
-    [Authorize(Policy = "Collaborator")]
+    [Authorize(Policy = "Encargado")]
     public async Task<ActionResult> Create(CreateExpenseRequest request, CancellationToken ct)
     {
         var id = await expenses.CreateAsync(request, ct);

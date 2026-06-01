@@ -1,4 +1,4 @@
-import { Component, inject, signal, OnInit } from '@angular/core';
+import { Component, computed, inject, signal, OnInit } from '@angular/core';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { AuthService } from '../core/auth/auth.service';
 import { AlertsService } from '../features/alerts/alerts.service';
@@ -31,7 +31,8 @@ export class Shell implements OnInit {
   protected readonly updateAvailable = this.updateService.updateAvailable;
   protected readonly updateVersion   = this.updateService.updateVersion;
 
-  protected readonly nav: NavItem[] = [
+  // Operational menu — shown to the bodega Encargado.
+  private readonly operatorNav: NavItem[] = [
     { label: 'Dashboard',     path: '/',          icon: '◈' },
     { label: 'Inventario',    path: '/inventario', icon: '▤' },
     { label: 'Compras',       path: '/compras',    icon: '▦' },
@@ -44,6 +45,13 @@ export class Shell implements OnInit {
     { label: 'Actividad',     path: '/timeline',   icon: '◎' },
     { label: 'Configuración', path: '/configuracion', icon: '⚙' }
   ];
+
+  // Admin menu — the system Administrator only manages users.
+  private readonly adminNav: NavItem[] = [
+    { label: 'Usuarios', path: '/configuracion/usuarios', icon: '☷' }
+  ];
+
+  protected readonly nav = computed(() => (this.auth.isAdmin() ? this.adminNav : this.operatorNav));
 
   ngOnInit(): void {
     this.settingsService.load().subscribe({ error: () => {} });

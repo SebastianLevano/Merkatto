@@ -1,4 +1,4 @@
-export type Role = 1 | 2; // 1 = Administrator, 2 = Collaborator
+export type Role = 1 | 2; // 1 = Administrator, 2 = Encargado
 
 export interface User {
   id: number;
@@ -6,6 +6,7 @@ export interface User {
   fullName: string;
   role: Role;
   mustChangePassword: boolean;
+  businessName?: string | null;
 }
 
 export interface LoginRequest {

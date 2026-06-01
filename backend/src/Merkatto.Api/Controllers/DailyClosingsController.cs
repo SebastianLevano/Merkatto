@@ -28,7 +28,7 @@ public sealed class DailyClosingsController(DailyClosingService closings) : Cont
         closings.GetByDateAsync(date, ct);
 
     [HttpPost]
-    [Authorize(Policy = "Collaborator")]
+    [Authorize(Policy = "Encargado")]
     public async Task<ActionResult> Create(CreateDailyClosingRequest request, CancellationToken ct)
     {
         var id = await closings.CreateAsync(request, ct);

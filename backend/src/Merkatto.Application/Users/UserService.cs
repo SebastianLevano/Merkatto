@@ -20,7 +20,7 @@ public sealed class UserService(
             .OrderByDescending(u => u.Role == Role.Administrator)
             .ThenBy(u => u.FullName)
             .Select(u => new UserListItem(
-                u.Id, u.Email, u.FullName, u.Role, u.IsActive, u.MustChangePassword, u.LastLoginAt))
+                u.Id, u.Email, u.FullName, u.Role, u.IsActive, u.MustChangePassword, u.LastLoginAt, u.BusinessName))
             .ToListAsync(ct);
 
     public async Task<long> CreateAsync(CreateUserRequest req, CancellationToken ct)
@@ -37,6 +37,7 @@ public sealed class UserService(
             Role = req.Role,
             IsActive = true,
             MustChangePassword = true,
+            BusinessName = req.Role == Role.Encargado ? req.BusinessName?.Trim() : null,
             CreatedAt = clock.UtcNow
         };
         db.Users.Add(user);
@@ -60,6 +61,7 @@ public sealed class UserService(
         user.FullName = req.FullName.Trim();
         user.Role = req.Role;
         user.IsActive = req.IsActive;
+        user.BusinessName = req.Role == Role.Encargado ? req.BusinessName?.Trim() : null;
         await db.SaveChangesAsync(ct);
     }
 

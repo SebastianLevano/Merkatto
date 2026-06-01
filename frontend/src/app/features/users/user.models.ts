@@ -1,4 +1,4 @@
-export type Role = 1 | 2; // 1 = Administrator, 2 = Collaborator
+export type Role = 1 | 2; // 1 = Administrator, 2 = Encargado
 
 export interface UserItem {
   id: number;
@@ -8,6 +8,7 @@ export interface UserItem {
   isActive: boolean;
   mustChangePassword: boolean;
   lastLoginAt: string | null;
+  businessName: string | null;
 }
 
 export interface CreateUserRequest {
@@ -15,15 +16,17 @@ export interface CreateUserRequest {
   fullName: string;
   role: Role;
   password: string;
+  businessName: string | null;
 }
 
 export interface UpdateUserRequest {
   fullName: string;
   role: Role;
   isActive: boolean;
+  businessName: string | null;
 }
 
 export const ROLE_LABEL: Record<Role, string> = {
   1: 'Administrador',
-  2: 'Colaborador'
+  2: 'Encargado'
 };

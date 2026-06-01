@@ -9,10 +9,11 @@ public record UserListItem(
     Role Role,
     bool IsActive,
     bool MustChangePassword,
-    DateTimeOffset? LastLoginAt);
+    DateTimeOffset? LastLoginAt,
+    string? BusinessName);
 
-public record CreateUserRequest(string Email, string FullName, Role Role, string Password);
+public record CreateUserRequest(string Email, string FullName, Role Role, string Password, string? BusinessName);
 
-public record UpdateUserRequest(string FullName, Role Role, bool IsActive);
+public record UpdateUserRequest(string FullName, Role Role, bool IsActive, string? BusinessName);
 
 public record ResetPasswordRequest(string Password);

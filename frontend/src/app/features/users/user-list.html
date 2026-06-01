@@ -2,7 +2,7 @@
   <div class="flex items-center justify-between">
     <div>
       <h1 class="text-xl font-semibold text-slate-900">Usuarios</h1>
-      <p class="mt-0.5 text-sm text-slate-500">Colaboradores con acceso a este sistema.</p>
+      <p class="mt-0.5 text-sm text-slate-500">Encargados de bodega con acceso al sistema.</p>
     </div>
     <button
       (click)="openCreate()"
@@ -143,9 +143,21 @@
             class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900 focus:ring-1 focus:ring-slate-900"
           >
             <option [ngValue]="1">Administrador</option>
-            <option [ngValue]="2">Colaborador</option>
+            <option [ngValue]="2">Encargado</option>
           </select>
         </label>
+        @if (createRole === 2) {
+          <label class="block">
+            <span class="text-sm text-slate-700">Nombre del negocio</span>
+            <input
+              [(ngModel)]="createBusinessName"
+              type="text"
+              maxlength="120"
+              placeholder="Ej. Bodega Doña Rosa"
+              class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900 focus:ring-1 focus:ring-slate-900"
+            />
+          </label>
+        }
       </div>
 
       @if (createError()) {
@@ -195,9 +207,21 @@
             class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900 focus:ring-1 focus:ring-slate-900"
           >
             <option [ngValue]="1">Administrador</option>
-            <option [ngValue]="2">Colaborador</option>
+            <option [ngValue]="2">Encargado</option>
           </select>
         </label>
+        @if (editRole === 2) {
+          <label class="block">
+            <span class="text-sm text-slate-700">Nombre del negocio</span>
+            <input
+              [(ngModel)]="editBusinessName"
+              type="text"
+              maxlength="120"
+              placeholder="Ej. Bodega Doña Rosa"
+              class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900 focus:ring-1 focus:ring-slate-900"
+            />
+          </label>
+        }
         @if (editingUser.id !== currentUserId) {
           <label class="flex items-center gap-2">
             <input

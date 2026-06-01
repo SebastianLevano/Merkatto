@@ -9,7 +9,7 @@ public record ChangePasswordRequest(string CurrentPassword, string NewPassword);
 /// <summary>Access token returned to the client (kept in memory). The refresh token travels in an httpOnly cookie.</summary>
 public record AuthResult(string AccessToken, DateTimeOffset AccessTokenExpiresAt, string RefreshToken, UserDto User);
 
-public record UserDto(long Id, string Email, string FullName, Role Role, bool MustChangePassword);
+public record UserDto(long Id, string Email, string FullName, Role Role, bool MustChangePassword, string? BusinessName);
 
 /// <summary>Issued JWT plus its raw refresh token (the caller sets the cookie) and the user.</summary>
 public record TokenPair(
