@@ -4,6 +4,10 @@
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <!-- The API serves wwwroot via UseStaticFiles at runtime; it does not need the design-time
+         static web asset pipeline (fingerprinting/discovery). Disabling it prevents conflicts
+         when Merkatto.Desktop (which has its own wwwroot) references this project. -->
+    <StaticWebAssetsEnabled>false</StaticWebAssetsEnabled>
   </PropertyGroup>
 
   <ItemGroup>

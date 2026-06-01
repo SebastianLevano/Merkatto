@@ -39,3 +39,4 @@ backend/src/Merkatto.Desktop/wwwroot/
 *.db-shm
 *.db-wal
 signing.key
+backend/src/Merkatto.Api/wwwroot/
