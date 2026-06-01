@@ -1,3 +1,4 @@
+using Merkatto.Application.Auth;
 using Merkatto.Application.Common;
 using Merkatto.Domain.Auth;
 using Merkatto.Domain.Common;
@@ -8,10 +9,13 @@ namespace Merkatto.Application.Setup;
 public sealed class SetupService(
     IAppDbContext db,
     IPasswordHasher hasher,
-    IDateTimeProvider clock)
+    IDateTimeProvider clock,
+    IEnumerable<ICentralAuthClient> centralClients)
 {
+    // When a central identity server is configured, all users are managed there — the local
+    // wizard is irrelevant and must never block login for an Encargado's first use.
     public async Task<bool> NeedsSetupAsync(CancellationToken ct = default) =>
-        !await db.Users.AnyAsync(ct);
+        centralClients.Any() ? false : !await db.Users.AnyAsync(ct);
 
     public async Task InitializeAsync(InitializeRequest req, CancellationToken ct = default)
     {
