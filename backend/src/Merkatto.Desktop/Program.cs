@@ -77,7 +77,13 @@ var port = GetFreePort();
 var appUrl = $"http://localhost:{port}";
 
 // ── Web host setup ───────────────────────────────────────────────────────────────
-var builder = WebApplication.CreateBuilder(args);
+// ContentRootPath must be set to the executable's directory so appsettings.json is found
+// regardless of the current working directory (important when launched from a .app bundle).
+var builder = WebApplication.CreateBuilder(new WebApplicationOptions
+{
+    Args = args,
+    ContentRootPath = AppContext.BaseDirectory
+});
 
 builder.Configuration
     .AddJsonFile("appsettings.json", optional: false)
