@@ -42,3 +42,4 @@ signing.key
 backend/src/Merkatto.Api/wwwroot/
 backend/src/Merkatto.Desktop/client.json
 backend/src/Merkatto.Api/wwwroot/
+backend/src/Merkatto.Desktop/client.json

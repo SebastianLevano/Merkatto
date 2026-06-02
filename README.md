@@ -199,9 +199,5 @@ Ver `docs/RUNBOOK.md` para la instalación en VPS (pendiente hasta el primer cli
 
 | Doc | Contenido |
 |---|---|
-| `docs/PLAN.md` | Roadmap por fases y decisiones de alcance |
-| `docs/ARCHITECTURE.md` | Arquitectura y decisiones técnicas |
-| `docs/DESKTOP.md` | Diseño del instalable (offline, central, modos) |
 | `docs/RELEASE.md` | Publicar nuevas versiones del instalable |
 | `docs/RUNBOOK.md` | Instalación del central en VPS, backups, restore |
-| `CLAUDE.md` | Guía para Claude Code (convenciones, comandos, arquitectura) |
