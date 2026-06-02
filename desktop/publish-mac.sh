@@ -35,7 +35,15 @@ dotnet publish "$ROOT/backend/src/Merkatto.Desktop" \
 
 echo "[3/4] Bundling with vpk..."
 mkdir -p "$RELEASE_DIR"
-dotnet ~/.dotnet/tools/.store/vpk/1.0.1/vpk/1.0.1/tools/net10.0/any/vpk.dll bundle \
+
+# Locate vpk.dll regardless of installed version
+VPK_DLL="$(find "$HOME/.dotnet/tools/.store/vpk" -name "vpk.dll" -path "*/net10.0/*" 2>/dev/null | sort -V | tail -1)"
+if [ -z "$VPK_DLL" ]; then
+  VPK_DLL="$(find "$HOME/.dotnet/tools/.store/vpk" -name "vpk.dll" 2>/dev/null | sort -V | tail -1)"
+fi
+echo "   Using vpk: $VPK_DLL"
+
+dotnet "$VPK_DLL" bundle \
     --packId     Merkatto \
     --packVersion "$VERSION" \
     --packDir    "$PUBLISH_DIR" \
