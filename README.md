@@ -7,6 +7,22 @@ Cuadre diario, compra al por mayor, inventario por almacén/mostrador, fiados, r
 
 ---
 
+## Capturas del sistema
+
+| Dashboard del Encargado | Inventario |
+|---|---|
+| ![Dashboard](docs/screenshots/02-dashboard.png) | ![Inventario](docs/screenshots/03-inventario.png) |
+
+| Compras | Fiados |
+|---|---|
+| ![Compras](docs/screenshots/04-compras.png) | ![Fiados](docs/screenshots/06-fiados.png) |
+
+| Panel Administrador (solo gestión de usuarios) | Login |
+|---|---|
+| ![Admin](docs/screenshots/07-admin-usuarios.png) | ![Login](docs/screenshots/01-login.png) |
+
+---
+
 ## Modelo del sistema
 
 Merkatto sigue el modelo **un negocio = una instalación aislada**. No hay multi-tenancy:
