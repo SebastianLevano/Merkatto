@@ -1,0 +1,97 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  # ── macOS installer (Photino / WKWebView) ─────────────────────────────────
+  build-mac:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.x'
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install vpk
+        run: dotnet tool install -g vpk
+
+      - name: Get version
+        id: version
+        run: echo "version=${GITHUB_REF_NAME#v}" >> $GITHUB_OUTPUT
+
+      - name: Build macOS installer
+        run: bash desktop/publish-mac.sh ${{ steps.version.outputs.version }}
+
+      - name: Zip .app
+        run: |
+          cd desktop/releases-mac
+          zip -r Merkatto-${{ steps.version.outputs.version }}-mac.zip Merkatto.app
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mac-release
+          path: desktop/releases-mac/Merkatto-*.zip
+
+  # ── Windows installer (Photino / WebView2) ────────────────────────────────
+  build-win:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.x'
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install vpk
+        run: dotnet tool install -g vpk
+
+      - name: Get version
+        id: version
+        shell: bash
+        run: echo "version=${GITHUB_REF_NAME#v}" >> $GITHUB_OUTPUT
+
+      - name: Build Windows installer
+        shell: pwsh
+        run: .\desktop\publish-win.ps1 -Version ${{ steps.version.outputs.version }}
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: win-release
+          path: desktop/releases/**
+
+  # ── GitHub Release con ambos artefactos ──────────────────────────────────
+  create-release:
+    needs: [build-mac, build-win]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: mac-release
+          path: artifacts/mac
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: win-release
+          path: artifacts/win
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            artifacts/mac/*
+            artifacts/win/*
+          generate_release_notes: true
