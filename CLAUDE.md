@@ -4,27 +4,31 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-Merkatto — operational-management web platform for Peruvian bodegas/minimarkets.
-**Single-tenant per business**: each client gets its own frontend, backend and PostgreSQL DB.
-Scaling is by *replicating deployments*, NOT multi-tenancy. There is no `TenantId` anywhere by
-design. All installs run the same images; per-client differences live only in `docker/.env`.
+Merkatto — operational-management desktop app for Peruvian bodegas/minimarkets.
+**Single-tenant per business**: each install has its own SQLite database and is bound to a single
+Encargado. There is no `TenantId` anywhere by design. Isolation is physical (separate installs),
+not logical.
 
 Domain reality it models: no per-sale registration; end-of-day cash-up (efectivo/Yape/Plin/POS),
 wholesale purchase + per-unit sale (unit conversion), approximate inventory, simple credit ("fiados").
+
+## Roles
+
+- `Administrator` (role=1) — system owner. Manages users only. Never sees operational dashboard.
+- `Encargado` (role=2) — bodega operator. Full access to all operational features.
 
 ## Commands
 
 Backend (.NET 10, from `backend/`):
 ```bash
 dotnet build                                   # build solution
-dotnet test                                    # all tests
+dotnet test                                    # all tests (10 unit + 46 integration)
 dotnet test tests/Merkatto.UnitTests           # domain math tests (no DB)
 dotnet run --project src/Merkatto.Api          # run API (needs Postgres + config)
-# EF migrations (startup project is the API):
-dotnet dotnet-ef migrations add <Name> --project src/Merkatto.Infrastructure --startup-project src/Merkatto.Api --output-dir Persistence/Migrations
-dotnet dotnet-ef database update --project src/Merkatto.Infrastructure --startup-project src/Merkatto.Api
+# EF migrations (Postgres provider):
+EF_PROVIDER=Postgres dotnet dotnet-ef migrations add <Name> --project src/Merkatto.Infrastructure --startup-project src/Merkatto.Api --output-dir Persistence/Migrations
 ```
-The API also applies migrations + seeds the admin automatically on startup (`DbInitializer`).
+The API applies migrations + seeds the admin automatically on startup (`DbInitializer`).
 
 Frontend (Angular 21, from `frontend/`):
 ```bash
@@ -33,62 +37,79 @@ npm run build        # production build -> dist/merkatto-web/browser
 npm test             # vitest
 ```
 
+Desktop (from `backend/`):
+```bash
+# Build frontend first, then copy to wwwroot
+cd ../frontend && npm run build
+cp -r dist/merkatto-web/browser ../backend/src/Merkatto.Desktop/wwwroot
+# Run
+cd ../backend && dotnet run --project src/Merkatto.Desktop
+```
+
 Full stack (from `docker/`): `cp .env.example .env` then `docker compose up --build`.
 
 ## Local dev configuration
 
-- API reads `ConnectionStrings__Default`, `Auth__SigningKey`, `Seed__*` from config/env.
-  `appsettings.Development.json` carries a dev-only signing key + seed admin
-  (`admin@martita.pe` / `Admin123$`). Never use those in production.
-- Frontend dev points at `http://localhost:5080/api/v1` (`src/environments/environment.ts`);
-  production uses same-origin `/api/v1` via the reverse proxy (`environment.production.ts`,
-  swapped by `fileReplacements` in `angular.json`).
+- API dev seed: `admin@sistema.pe` / `Admin123$` (`appsettings.Development.json` in both Api and Desktop).
+  Never use in production.
+- Desktop reads `client.json` from `AppContext.BaseDirectory` at startup (gitignored — don't commit it).
+  Without `client.json` → standalone mode (local auth only).
+  With `{"centralBaseUrl":"..."}` → central broker mode (validates against remote, caches offline).
+  With `{"mode":"admin","centralBaseUrl":"..."}` → admin panel mode (Photino window → central, no local DB).
+- Frontend dev points at `http://localhost:5080/api/v1` (`environment.ts`); production uses
+  same-origin `/api/v1` (`environment.production.ts`, swapped by `fileReplacements`).
 
 ## Architecture
 
-Backend is a **modular monolith / pragmatic Clean Architecture** (no microservices, no
-CQRS/MediatR/DDD-heavy patterns — intentionally kept simple). Project dependency direction:
-`Api → Application → Domain`, `Infrastructure → Application/Domain`.
+Backend: **modular monolith / pragmatic Clean Architecture** (no microservices, no CQRS/MediatR).
+Dependency direction: `Api → Application → Domain`, `Infrastructure → Application/Domain`.
 
-- `Merkatto.Domain` — entities + business math. Money/derived values are **computed properties**
-  on entities (e.g. `Product.UnitCost = LastPurchaseCost / UnitsPerPurchaseUnit`, `Product.Margin`,
-  `DailyClosing.NetFlow`/`PosCommissionAmount`) and are `Ignore()`d in EF configs. When you add a
-  computed property, remember to ignore it in the matching `*Configuration`.
-- `Merkatto.Application` — use-case services (e.g. `AuthService`), DTOs, FluentValidation
-  validators, and abstractions: `IAppDbContext`, `ICurrentUser`, `IPasswordHasher`,
-  `IDateTimeProvider`, `ITokenService`. Application depends on EF Core only for `IAppDbContext`.
-- `Merkatto.Infrastructure` — `AppDbContext` (implements `IAppDbContext`), EF configurations,
-  `AuditingInterceptor`, Argon2 hasher, JWT token service, `DbInitializer`. Postgres + snake_case
-  naming convention.
-- `Merkatto.Api` — controllers, `Program.cs` wiring, `HttpCurrentUser`, security headers
-  middleware, global exception handler (→ ProblemDetails), validation filter, rate limiting.
+- `Merkatto.Domain` — entities + business math. Computed properties (e.g. `Product.UnitCost`,
+  `DailyClosing.NetFlow`) are `Ignore()`d in EF configs — remember to ignore when adding new ones.
+- `Merkatto.Application` — use-case services, DTOs, FluentValidation validators, abstractions:
+  `IAppDbContext`, `ICurrentUser`, `IPasswordHasher`, `IDateTimeProvider`, `ITokenService`,
+  `ICentralAuthClient` (optional, injected as `IEnumerable<ICentralAuthClient>`).
+- `Merkatto.Infrastructure` — `AppDbContext`, EF configurations, `AuditingInterceptor`, Argon2
+  hasher, JWT token service, `DbInitializer`, `HttpCentralAuthClient`.
+- `Merkatto.Api` — controllers, `Program.cs` wiring, middleware, rate limiting. Also serves the
+  Angular SPA from `wwwroot/` when present (for admin panel mode).
+- `Merkatto.Desktop` — Photino host. Reads `client.json`, chooses mode, wires optional
+  `ICentralAuthClient` if `Central:BaseUrl` is set, opens the Photino window.
 
-Key cross-cutting behavior (all in Infrastructure/Persistence):
-- **Soft delete**: entities implement `ISoftDelete`; a global query filter hides deleted rows;
-  the `AuditingInterceptor` converts hard deletes into soft deletes.
-- **Auditing**: `AuditingInterceptor` stamps `IAuditable` fields and writes an `AuditLog` row
-  (who/what/when) per change. Secrets (`PasswordHash`, `TokenHash`) are never serialized into logs.
-  `RefreshToken` and `AuditLog` are excluded from audit logging.
+Key cross-cutting behavior (Infrastructure/Persistence):
+- **Soft delete**: `ISoftDelete` entities → global query filter; `AuditingInterceptor` converts
+  hard deletes to soft deletes.
+- **Auditing**: `AuditingInterceptor` stamps `IAuditable` + writes `AuditLog`. Secrets
+  (`PasswordHash`, `TokenHash`) are never logged. `RefreshToken` and `AuditLog` are excluded.
 
-Auth flow: short-lived JWT access token returned in the body (kept in memory by the SPA) +
-rotating refresh token in an **httpOnly, Secure, SameSite=Strict** cookie scoped to
-`/api/v1/auth`. Refresh tokens rotate on use with **reuse detection** (a reused revoked token
-revokes the whole chain). See `AuthService` + `AuthController`. Frontend mirrors this in
-`core/auth/` (token in a signal, `authInterceptor` retries once on 401 via `/auth/refresh`).
+Auth flow: JWT (15 min, in memory) + rotating refresh token (httpOnly cookie, `/api/v1/auth`).
+Reuse detection: reused revoked token revokes the whole chain.
 
-Frontend structure: `core/` (auth service/guard/interceptor), `features/` (login, dashboard, +
-Phase 1 modules), `layout/` (desktop-first shell). Standalone components + signals, lazy routes,
-TailwindCSS v4 (`@import "tailwindcss"` in `styles.css`, `@tailwindcss/postcss` in `.postcssrc.json`).
+Central identity broker (when `ICentralAuthClient` is registered):
+- `ValidateAsync` returns `null` = offline (fall back to local cache), throws
+  `CentralRejectedException` = 401 final (do NOT fall back), returns value = cache and issue
+  local token.
+- First successful online login binds the install to that Encargado (`bound_user_email` AppSetting).
+  Different accounts and Administrators are rejected on that install.
+- Password changes go to the central first; offline forced-changes are blocked.
 
-## Roadmap context
+Frontend: `core/` (auth service/guard/interceptor, `role.guard.ts`, `desktop.service.ts`),
+`features/`, `layout/shell.ts`. Standalone components + signals, lazy routes, TailwindCSS v4.
+Role guards: `operatorGuard` (redirects admin → `/configuracion/usuarios`), `adminOnlyGuard`
+(redirects non-admin → `/`). Sidebar is computed by role (`nav()` signal in shell).
 
-Phase 0 (scaffold + auth + DB + Docker) is done. **Products module is done** (Application
-`ProductService`/`CategoryBrandService`, `ProductsController`/`CategoriesController`/
-`BrandsController`, Angular `features/products`). Remaining Phase 1 (MVP): Purchases,
-Inventory (warehouse/counter + `StockMovement` ledger), Daily Closing, Expenses, **Fiados**,
-basic Dashboard. Entities for all of these already exist in `Domain`; what's missing is the
-Application services + API controllers + Angular features. Products is the reference pattern
-to copy. Full plan: `docs/PLAN.md`.
+## State of the project
+
+MVP complete. All features implemented and tested. Project is in active development (no live
+clients yet). Pending: VPS deploy of the central server (when first client signs up).
+
+Key files:
+- `backend/src/Merkatto.Infrastructure/Auth/HttpCentralAuthClient.cs` — HTTP broker
+- `backend/src/Merkatto.Application/Auth/ICentralAuthClient.cs` — broker contract + exceptions
+- `backend/src/Merkatto.Desktop/Program.cs` — three-mode startup logic
+- `frontend/src/app/core/auth/role.guard.ts` — role-based route guards
+- `backend/src/Merkatto.Infrastructure/Persistence/DbInitializer.cs` — startup seeding + SQLite
+  schema upgrades (idempotent ALTER TABLE for new columns)
 
 ## Conventions
 
@@ -96,4 +117,4 @@ C#: PascalCase, `_camelCase` private fields, `Async` suffix. DB: snake_case (aut
 convention — don't hand-name columns). API: `/api/v1/...`, plural nouns. Angular: kebab-case
 files, standalone, signals, feature folders. New entities: derive from `BaseEntity`, add a
 `DbSet` to both `AppDbContext` and `IAppDbContext`, add an `IEntityTypeConfiguration`, then
-create a migration.
+create a migration (Postgres) and an idempotent `ALTER TABLE` guard in `DbInitializer` (SQLite).

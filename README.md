@@ -7,33 +7,32 @@ Cuadre diario, compra al por mayor, inventario por almacén/mostrador, fiados, r
 
 ---
 
-## Dos sabores, un solo código
+## Modelo del sistema
 
-| | **Escritorio** | **Nube** |
+Merkatto sigue el modelo **un negocio = una instalación aislada**. No hay multi-tenancy:
+cada bodega tiene su propia base de datos, sus propios datos y su propio instalable.
+
+### Roles
+
+| Rol | Quién | Qué puede hacer |
 |---|---|---|
-| Dónde corre | PC del cliente (Windows) | VPS que vos hospedás |
-| Base de datos | SQLite (archivo local) | PostgreSQL |
-| Internet | No requiere | Requiere |
-| Entrega | Instalador `.exe` (Velopack) | URL + login |
-| Actualización | Auto-update silencioso | `git pull` + redeploy |
+| **Administrador** | El dueño/operador del sistema | Solo gestión de usuarios — crear, resetear contraseña, desactivar |
+| **Encargado** | El bodeguero o empleado de confianza | Operación completa: inventario, compras, cierres, fiados, reportes |
 
-El instalador es el mismo para todas las bodegas. Lo específico de cada cliente (nombre del
-negocio, credenciales del admin) se configura en el **wizard de primer arranque**.
+El Administrador **no** ve el dashboard ni la operación de ninguna bodega. Cada bodega tiene un solo Encargado.
 
 ---
 
-## Stack
+## Tres modos de uso
 
-| Capa | Tecnología |
-|---|---|
-| Frontend | Angular 21 (standalone, signals) + TailwindCSS v4 |
-| Backend | ASP.NET Core (.NET 10) — modular monolith, Clean Architecture pragmática |
-| DB nube | PostgreSQL + EF Core (migrations) |
-| DB escritorio | SQLite (EF Core, mismo modelo, schema via `EnsureCreated`) |
-| Auth | JWT corto en memoria + refresh token rotatorio (cookie httpOnly) |
-| Ventana desktop | Photino.NET (WKWebView / WebView2 nativo) |
-| Auto-update | Velopack — feed estático (GitHub Releases) |
-| Infra nube | Docker / docker-compose + reverse proxy HTTPS |
+### 1. Escritorio standalone (sin internet)
+La bodega corre completamente offline. El usuario admin inicial se crea en el **wizard de primer arranque**. Sin configuración adicional.
+
+### 2. Escritorio con identidad central
+El Encargado se autentica contra un servidor central la primera vez (requiere internet) y luego puede trabajar sin conexión usando el **cache de credenciales local**. Los datos operativos siempre son locales (SQLite). Este modelo permite al Administrador gestionar todas sus bodegas desde un solo lugar.
+
+### 3. Panel de administración
+El Administrador usa la app en **modo admin** (`client.json` con `"mode":"admin"`): abre una ventana directamente al servidor central donde solo ve la gestión de usuarios. No levanta base de datos ni backend local.
 
 ---
 
@@ -43,15 +42,32 @@ negocio, credenciales del admin) se configura en el **wizard de primer arranque*
 - **Productos** — conversión paquete→unidad, costo desde compras, margen calculado
 - **Compras** — por proveedor (texto libre con autocomplete), editar/eliminar con reversión de stock
 - **Cierre diario** — efectivo / Yape / Plin / POS, comisión POS, gastos del día, flujo neto
-- **Gastos** — CRUD, editar (admin), eliminar (soft-delete)
+- **Gastos** — CRUD, editar y eliminar (admin)
 - **Fiados** — cliente → ventas + pagos → saldo en tiempo real
 - **Dashboard** — último cierre, stock bajo, saldo de fiados, productos más rentables
 - **Alertas** — stock bajo, cierres pendientes
 - **NRUS** — estimación de categoría y cuota mensual
-- **Reportes** — PDF y Excel: cierres, gastos y compras (QuestPDF / ClosedXML)
-- **Configuración** — nombre del negocio, cambio de contraseña, gestión de usuarios (admin)
-- **Primer arranque** — wizard cuando la BD está vacía: nombre del negocio + admin inicial
-- **Backups escritorio** — automático al arrancar + manual desde UI; rotación a 7 copias
+- **Reportes** — PDF (cierres) y Excel (gastos, compras) — se abren en la app nativa del sistema
+- **Gestión de usuarios** — crear, editar, resetear contraseña, desactivar (solo Administrador)
+- **Configuración** — nombre del negocio, cambio de contraseña
+- **Primer arranque** — wizard cuando la BD está vacía (solo modo standalone)
+- **Backups escritorio** — automático al arrancar + manual desde UI; rotación 7 copias
+- **Auto-update** — Velopack: el instalable se actualiza solo cuando hay una nueva versión publicada
+
+---
+
+## Stack
+
+| Capa | Tecnología |
+|---|---|
+| Frontend | Angular 21 (standalone, signals) + TailwindCSS v4 |
+| Backend | ASP.NET Core (.NET 10) — modular monolith, Clean Architecture pragmática |
+| DB escritorio | SQLite (EF Core, schema via `EnsureCreated`) |
+| DB nube | PostgreSQL + EF Core (migrations) |
+| Auth | JWT corto en memoria + refresh token rotatorio (cookie httpOnly) |
+| Ventana desktop | Photino.NET (WKWebView / WebView2 nativo) |
+| Auto-update | Velopack |
+| Infra nube | Docker / docker-compose + Caddy (HTTPS automático) |
 
 ---
 
@@ -62,16 +78,16 @@ negocio, credenciales del admin) se configura en el **wizard de primer arranque*
   src/
     Merkatto.Domain          Entidades, enums, reglas de dominio
     Merkatto.Application     Casos de uso, DTOs, validators, abstracciones
-    Merkatto.Infrastructure  EF Core, interceptors (audit/soft-delete), seguridad
-    Merkatto.Api             Controllers, middleware, Program.cs (sabor nube)
+    Merkatto.Infrastructure  EF Core, interceptors (audit/soft-delete), seguridad, broker central
+    Merkatto.Api             Controllers, middleware, Program.cs (sabor nube / central)
     Merkatto.Desktop         Host Photino — sabor escritorio (SQLite + Velopack)
   tests/
-    Merkatto.UnitTests       Tests de matemática de dominio (sin DB)
-    Merkatto.IntegrationTests Tests E2E: 20 × Postgres + 20 × SQLite
+    Merkatto.UnitTests       Tests de dominio (sin DB)
+    Merkatto.IntegrationTests  46 tests: Postgres (Testcontainers) + SQLite in-memory
 
 /frontend                    Angular 21 (features lazy-loaded, señales, Tailwind)
 /docker                      Dockerfiles, docker-compose, configs Nginx/Caddy
-/desktop                     Scripts de build: publish-win.ps1, publish-mac.sh
+/desktop                     Scripts de build y ejemplos de client.json
 /docs                        PLAN.md, ARCHITECTURE.md, DESKTOP.md, RELEASE.md, RUNBOOK.md
 ```
 
@@ -79,48 +95,52 @@ negocio, credenciales del admin) se configura en el **wizard de primer arranque*
 
 ## Desarrollo local
 
-**Requisitos:** .NET 10 SDK · Node 20+ · Docker (solo para el sabor nube)
+**Requisitos:** .NET 10 SDK · Node 20+
 
-### Sabor escritorio (sin Docker, sin Postgres)
+### Modo escritorio standalone
 
 ```bash
 # 1. Buildear el SPA
 cd frontend && npm install && npm run build
 cp -r dist/merkatto-web/browser ../backend/src/Merkatto.Desktop/wwwroot
 
-# 2. Correr el Desktop
+# 2. Correr
 cd ../backend
-ASPNETCORE_ENVIRONMENT=Development dotnet run --project src/Merkatto.Desktop
-
-# La ventana abre en http://localhost:{puerto-aleatorio}
-# Si la BD está vacía → aparece el wizard de primer arranque
-# Credenciales dev (appsettings.Development.json): admin@sistema.pe / Admin123$
+dotnet run --project src/Merkatto.Desktop
+# Credenciales dev: admin@sistema.pe / Admin123$  (appsettings.Development.json)
+# BD vacía → aparece wizard de primer arranque
 ```
 
-Datos persistidos en `~/Library/Application Support/Merkatto/` (macOS) o
-`C:\ProgramData\Merkatto\` (Windows).
+Datos en `~/Library/Application Support/Merkatto/` (macOS) o `C:\ProgramData\Merkatto\` (Windows).
+
+### Modo escritorio con central
+
+Crear `backend/src/Merkatto.Desktop/client.json` (gitignoreado):
+```json
+{ "centralBaseUrl": "http://localhost:5080" }
+```
+El login valida contra el central y cachea credenciales para uso offline. Sin `client.json` el comportamiento es standalone puro.
+
+### Modo panel admin
+
+```json
+{ "mode": "admin", "centralBaseUrl": "http://localhost:5080" }
+```
+El Desktop abre una ventana al central sin levantar backend local.
 
 ### Sabor nube (Docker)
 
 ```bash
 cd docker
-cp .env.example .env       # editar con tus credenciales
+cp .env.example .env   # completar todos los valores
 docker compose up --build
-# Frontend en :443, API en :5080/api/v1
 ```
 
-### Solo backend (API + Postgres local)
+### Solo API + frontend dev
 
 ```bash
-cd backend
-dotnet run --project src/Merkatto.Api
-# Requiere Postgres en localhost:5432 o ajustar appsettings.Development.json
-```
-
-### Frontend dev (proxy al API)
-
-```bash
-cd frontend && npm start    # dev server en :4200, proxy a API en :5080
+cd backend && dotnet run --project src/Merkatto.Api   # API en :5080
+cd frontend && npm start                               # dev server en :4200
 ```
 
 ---
@@ -129,28 +149,38 @@ cd frontend && npm start    # dev server en :4200, proxy a API en :5080
 
 ```bash
 cd backend
-dotnet test tests/Merkatto.UnitTests          # sin DB, rápidos
-dotnet test tests/Merkatto.IntegrationTests   # Postgres (Testcontainers) + SQLite in-memory
+dotnet test tests/Merkatto.UnitTests         # sin DB, rápidos
+dotnet test tests/Merkatto.IntegrationTests  # Postgres (Testcontainers) + SQLite in-memory
 ```
 
-Los tests de integración corren en ambos proveedores para garantizar paridad entre sabores.
+46 tests de integración corren en ambos proveedores para garantizar paridad. Incluyen tests
+del broker de identidad central (online, offline, rechazo, aislamiento por instalación).
 
 ---
 
-## Publicar una versión del instalable (Windows)
+## Publicar el instalable
 
-```powershell
-# Desde la raíz del repo, en Windows
-.\desktop\publish-win.ps1 `
-    -Version 1.0.1 `
-    -FeedUrl "https://github.com/<owner>/merkatto/releases/"
+```bash
+# macOS (desde la raíz del repo)
+./desktop/publish-mac.sh 1.0.0
+# → desktop/releases-mac/Merkatto.app
 
-# Subir a GitHub Releases
-gh release create v1.0.1 --title "v1.0.1" --notes "Qué cambió" desktop/releases/*
+# Windows (en PowerShell)
+.\desktop\publish-win.ps1 1.0.0
+# → desktop/releases-win/
 ```
 
-Los clientes instalados se actualizan solos la próxima vez que abren la app.
-Ver `docs/RELEASE.md` para el runbook completo.
+El binario es el mismo para todas las bodegas. La configuración por cliente va en `client.json`
+junto al ejecutable. Ver plantillas en `desktop/client-bodega.example.json` y
+`desktop/client-admin.example.json`. Ver `docs/RELEASE.md` para el proceso completo.
+
+---
+
+## Deploy del servidor central
+
+El servidor central es el sabor nube (`Merkatto.Api` + Postgres + Docker). Es la fuente de
+verdad de usuarios para todas las bodegas con identidad centralizada.
+Ver `docs/RUNBOOK.md` para la instalación en VPS (pendiente hasta el primer cliente real).
 
 ---
 
@@ -161,17 +191,17 @@ Ver `docs/RELEASE.md` para el runbook completo.
 - **API** — `/api/v1/...`, sustantivos en plural
 - **Angular** — archivos kebab-case, standalone, signals, feature folders
 - **Entidades nuevas** — heredar `BaseEntity`, agregar `DbSet` en `IAppDbContext` y
-  `AppDbContext`, crear `IEntityTypeConfiguration`, generar migration
+  `AppDbContext`, crear `IEntityTypeConfiguration`, generar migración
 
 ---
 
-## Documentación adicional
+## Documentación
 
 | Doc | Contenido |
 |---|---|
 | `docs/PLAN.md` | Roadmap por fases y decisiones de alcance |
-| `docs/ARCHITECTURE.md` | Resumen de arquitectura y decisiones técnicas |
-| `docs/DESKTOP.md` | Diseño del instalable de escritorio (offline + nube) |
-| `docs/RELEASE.md` | Cómo publicar una versión nueva del instalable |
-| `docs/RUNBOOK.md` | Instalación en VPS, backups, restore |
+| `docs/ARCHITECTURE.md` | Arquitectura y decisiones técnicas |
+| `docs/DESKTOP.md` | Diseño del instalable (offline, central, modos) |
+| `docs/RELEASE.md` | Publicar nuevas versiones del instalable |
+| `docs/RUNBOOK.md` | Instalación del central en VPS, backups, restore |
 | `CLAUDE.md` | Guía para Claude Code (convenciones, comandos, arquitectura) |
