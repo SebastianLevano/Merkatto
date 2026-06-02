@@ -43,3 +43,9 @@ backend/src/Merkatto.Api/wwwroot/
 backend/src/Merkatto.Desktop/client.json
 backend/src/Merkatto.Api/wwwroot/
 backend/src/Merkatto.Desktop/client.json
+
+# Docs internos — solo locales, no se suben al repo público
+CLAUDE.md
+docs/PLAN.md
+docs/ARCHITECTURE.md
+docs/DESKTOP.md
